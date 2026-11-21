@@ -20,7 +20,7 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 - T2 S2 S6 — guided Ruffini table widget (pure logic + UI), from division cards and from a selected polynomial; result goes into the card — inline — commit: 0b6cb31
 - T3 S3 — guided quadratic-formula widget — inline — commit: 8171d0a
 - T4 S4 — Gauss candidates widget, hands a root to Ruffini — inline — commit: fd9aa86
-- T5 S5 — theory/formulas side panel, insert into board — inline — commit: pending
+- T5 S5 — theory/formulas side panel, insert into board — inline — commit: 8bba9e2
 - T6 S1-S8 — README/AGENTS docs, browser E2E check — inline — commit: pending
 - T7 S7 — chat panel says "Asistente" and shows the model reported by `gebra watch` — inline — commit: a69dc72
 - T8 S8 — resizable exercise cards (persisted size) — inline — commit: a69dc72
@@ -38,3 +38,4 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 - L9 (evidence T2): headless Firefox on isolated server: division card → "Ruffini" → typed 1, -7 (hint "Falta el término de x²: completá con 0."), then 0 -7 6 -2 1 -2 -2 4 -3 6 12 → "C(x)=x²−2x−3  R=12"; "Escribir el resultado en la tarjeta" → card solved; CLI shows "[w1] Ruffini: … completo". Workers unavailable; inline. 83 tests + tsc green.
 - L10 (evidence T4): factor card x^3-7x+6 → "Gauss" → chips P(-1)=12, P(2)=0 (green) → "Dividir por (x − 2) con Ruffini" opens a fixed-root table in the card → filled → "Escribir la factorización en la tarjeta" writes (x−2)(x²+2x−3) ✓, status "todavía no terminaste". Decision: in factor/solve cards an exact Ruffini division is written as a factoring step (solve adds =0); Gauss passes the x^k prefix when it factored x out. 92 tests + tsc green.
 - L11 (evidence T3): quadratic card 2x²−3x−2=0 → "Resolvente" → a=2, b=3 rejected ("Revisá el signo de b: …"), b=−3, c=−2, Δ=25 with live substitution, "Dos raíces reales", x₁=2, x₂=−1/2 → "Escribir las raíces en la tarjeta" → x=2, x=−½ ✓ and card solved. 101 tests + tsc green.
+- L12 (evidence T5): headless Firefox: select a division card, press F → sheet opens with "División de polinomios" open and highlighted; search "diferencia de cuadrados" → 2 entries; "Insertar en la pizarra" → blue note on the board; Esc closes. Content: 5 sections, 20 entries; every formula renders in KaTeX and 15 concrete identities are CAS-verified in test/theory.test.ts. 106 tests + tsc green.
