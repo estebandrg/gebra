@@ -1,0 +1,36 @@
+.ruffini { display: grid; gap: 8px; }
+.ruf-expr { font-size: 22px; color: var(--text); }
+.ruf-step { font-size: 13.5px; color: var(--subtext1); min-height: 1.4em; }
+.ruffini.done .ruf-step { color: var(--green); }
+.ruf-grid { display: grid; width: max-content; margin: 4px 0 2px; font: 600 20px var(--sans); }
+.rcell { position: relative; padding: 4px 5px; display: grid; place-items: center; min-height: 46px; }
+.rcell.bar { border-right: 2px solid var(--overlay1); }
+.rcell.res { border-top: 2px solid var(--overlay1); padding-top: 7px; }
+.rcell input { width: 52px; height: 36px; text-align: center; font: inherit; color: var(--text); background: transparent; border: 1px dashed transparent; border-radius: 9px; outline: none; padding: 0 2px; transition: background .15s, border-color .15s, box-shadow .2s; }
+.rcell input[readonly] { cursor: default; }
+.rcell.next input { border: 1px solid var(--mauve); background: #c6a0f614; box-shadow: 0 0 0 4px #c6a0f61f; cursor: text; }
+.rcell.next input::placeholder { color: var(--overlay0); }
+.rcell.ok input { color: var(--green); }
+.rcell.coef.ok input { color: var(--text); }
+.rcell.root.ok input { color: var(--peach); }
+.rcell.prod.ok input { color: var(--blue); font-size: .85em; }
+.rcell.related input { background: #eed49f1f; border-color: #eed49f66; }
+.rcell.bad input { border-color: var(--red); background: #ed87961a; box-shadow: 0 0 0 4px #ed87961f; }
+.rcell.rest input { border: 2px solid var(--overlay1); border-radius: 6px; }
+.rcell.rest.ok input { border-color: var(--green); }
+.rcell.pop input { animation: ruf-pop .35s cubic-bezier(.2, 1.6, .4, 1); }
+.rcell.shake { animation: ruf-shake .35s; }
+@keyframes ruf-pop { from { transform: scale(.7); } }
+@keyframes ruf-shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+.ruf-hint { font-size: 13px; color: var(--red); min-height: 1.2em; }
+.ruf-hint:empty { display: none; }
+.ruf-result { display: none; }
+.ruffini.done .ruf-result { display: block; padding: 8px 12px; border-radius: 10px; background: #a6da9512; border: 1px solid #a6da9533; font-size: 20px; }
+.ruf-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.ruf-actions button { font-size: 12.5px; padding: 5px 10px; }
+.ruf-write { background: var(--green); color: var(--crust); font-weight: 600; }
+.ruf-write:hover { background: var(--teal); }
+.ruf-write:disabled { background: var(--surface0); color: var(--green); cursor: default; }
+.ruf-reset { background: transparent; color: var(--overlay1); }
+.in-card .ruf-expr { display: none; }
+.rcell:not(.ok):not(.next) input { border-color: #494d6466; }

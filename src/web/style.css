@@ -296,3 +296,4 @@ body.chat-hidden .chat { display: none; }
 .item.tool:not(.in-card) { box-shadow: 0 16px 40px -20px #000c; }
 .item.tool.in-card { display: block; padding: 10px 12px 12px; margin: 6px 0; background: var(--base); }
 .tool-title { font: 600 11px var(--sans); letter-spacing: .6px; text-transform: uppercase; color: var(--teal); margin-bottom: 8px; }
+.item.tool.in-card > .del { top: 8px; transform: none; }
