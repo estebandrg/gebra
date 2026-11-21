@@ -1,0 +1,94 @@
+import { describe, expect, test } from "bun:test";
+import {
+  parseMath, compareSteps, solveEquation, factor, expand, divide, realRoots, compile, toTeX, checkAnswer,
+} from "../src/shared/cas";
+
+describe("parseMath", () => {
+  test("expression with implicit multiplication", () => {
+    const m = parseMath("x^{2}+3x-4");
+    expect(m.kind).toBe("expression");
+    if (m.kind === "expression") expect(m.vars).toEqual(["x"]);
+  });
+  test("equation splits on =", () => {
+    const m = parseMath("2x+3=7");
+    expect(m.kind).toBe("equation");
+  });
+  test("\\times and \\div are normalized", () => {
+    const m = parseMath("3\\times4\\div2");
+    expect(m.kind).toBe("expression");
+    if (m.kind === "expression") expect(m.expr).not.toContain("times");
+  });
+  test("solution list x=2 o x=3", () => {
+    for (const s of ["x=2\\text{ o }x=3", "x=2,\\ x=3", "x=2\\lor x=3", "x_1=2,x_2=3"]) {
+      const m = parseMath(s);
+      expect(m.kind).toBe("solutions");
+      if (m.kind === "solutions") expect(m.values.sort()).toEqual(["2", "3"]);
+    }
+  });
+  test("empty and garbage are invalid", () => {
+    expect(parseMath("").kind).toBe("empty");
+    expect(parseMath("2x+=").kind).toBe("invalid");
+  });
+});
+
+describe("compareSteps", () => {
+  test("equivalent linear steps", () => {
+    expect(compareSteps("2x+3=7", "2x=4").status).toBe("equivalent");
+    expect(compareSteps("2x=4", "x=2").status).toBe("equivalent");
+  });
+  test("wrong step is different", () => {
+    const r = compareSteps("2x+3=7", "2x=10");
+    expect(r.status).toBe("different");
+  });
+  test("quadratic to factored and to solution list", () => {
+    expect(compareSteps("x^2-5x+6=0", "(x-2)(x-3)=0").status).toBe("equivalent");
+    expect(compareSteps("(x-2)(x-3)=0", "x=2\\text{ o }x=3").status).toBe("equivalent");
+  });
+  test("losing a root is different", () => {
+    expect(compareSteps("x^2=4", "x=2").status).toBe("different");
+  });
+  test("expression rewriting", () => {
+    expect(compareSteps("(x+1)^2", "x^2+2x+1").status).toBe("equivalent");
+    expect(compareSteps("(x+1)^2", "x^2+1").status).toBe("different");
+  });
+  test("multivariable equations by proportionality", () => {
+    expect(compareSteps("2x+4y=6", "x+2y=3").status).toBe("equivalent");
+    expect(compareSteps("2x+4y=6", "x+2y=4").status).toBe("different");
+  });
+  test("mixing expression and equation is unknown", () => {
+    expect(compareSteps("x^2-1", "x=1").status).toBe("unknown");
+  });
+});
+
+describe("algebra tools", () => {
+  test("solve", () => {
+    expect(solveEquation("x^2-5x+6=0").solutions.sort()).toEqual(["2", "3"]);
+    expect(solveEquation("x+1=x+2").solutions).toEqual([]);
+    expect(solveEquation("x+1=x+1").all).toBe(true);
+  });
+  test("factor / expand / divide", () => {
+    expect(compareSteps(factor("x^2-5x+6"), "(x-2)(x-3)").status).toBe("equivalent");
+    expect(factor("x^2-5x+6")).toContain("(");
+    expect(compareSteps(expand("(x+1)^3"), "x^3+3x^2+3x+1").status).toBe("equivalent");
+    const d = divide("2x^3-3x^2+4", "x-2");
+    expect(compareSteps(d.quotient, "2x^2+x+2").status).toBe("equivalent");
+    expect(d.remainder).toBe("8");
+  });
+  test("realRoots ignores complex", () => {
+    expect(realRoots("x^2+1")).toEqual([]);
+    expect(realRoots("x^2-5x+6")).toEqual([2, 3]);
+  });
+  test("compile evaluates a single-variable expression", () => {
+    expect(compile("x^2-1")(3)).toBe(8);
+  });
+  test("toTeX", () => {
+    expect(toTeX("(x+1)^2/3")).toContain("\\frac");
+  });
+  test("checkAnswer against expected values", () => {
+    expect(checkAnswer("x=3", ["3"])).toBe(true);
+    expect(checkAnswer("x=\\frac{6}{2}", ["3"])).toBe(true);
+    expect(checkAnswer("x=2\\text{ o }x=3", ["3", "2"])).toBe(true);
+    expect(checkAnswer("x=2", ["3", "2"])).toBe(false);
+    expect(checkAnswer("2x=6", ["3"])).toBe(false);
+  });
+});

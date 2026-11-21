@@ -1,0 +1,23 @@
+{
+  "name": "gebra",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun --hot src/server/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "bin": {
+    "gebra": "bin/gebra.ts"
+  },
+  "dependencies": {
+    "katex": "^0.19.1",
+    "mathlive": "^0.111.4",
+    "nerdamer": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.5",
+    "@types/katex": "^0.16.8",
+    "typescript": "^7.0.2"
+  }
+}
