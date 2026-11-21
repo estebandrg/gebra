@@ -19,7 +19,7 @@ export interface ServerOptions {
 function inferTopic(kind: Exercise["kind"], latex: string): Topic {
   if (kind === "divide") return "division";
   if (kind === "factor") return "factorizar";
-  if (kind === "expand") return "operaciones";
+  if (kind === "expand" || kind === "simplify") return "operaciones";
   const powers = [...latex.matchAll(/x\s*\^\s*\{?\s*(\d+)/g)].map((m) => Number(m[1]));
   return Math.max(1, ...powers) >= 2 ? "cuadratica" : "lineal";
 }

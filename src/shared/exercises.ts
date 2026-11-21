@@ -298,6 +298,16 @@ export function checkExerciseStep(ex: Exercise, latex: string): { status: Progre
           : !/\(/.test(normalizeLatex(latex).replace(/\\left|\\right/g, "")) && termCount(latex) <= termCount(ex.answer[0]!);
       return done ? { status: "solved", reason: "¡Resuelto!" } : { status: "progress", reason: "Es equivalente, pero todavía no terminaste" };
     }
+    case "simplify": {
+      const cmp = compareSteps(ex.latex, latex);
+      if (cmp.status === "different") return { status: "wrong", reason: cmp.reason };
+      if (cmp.status !== "equivalent") return { status: "unknown", reason: cmp.reason };
+      // "Simplified" has no single form, so judge by size: no longer than the expected answer (plus some slack).
+      const size = (t: string) => normalizeLatex(t).replace(/\\left|\\right|\\cdot|\s/g, "").length;
+      return size(latex) !== size(ex.latex) && size(latex) <= Math.ceil(size(ex.answer[0]!) * 1.3) + 1
+        ? { status: "solved", reason: "¡Resuelto!" }
+        : { status: "progress", reason: "Es equivalente, pero se puede simplificar más" };
+    }
     case "divide": {
       const [q, rem] = ex.answer as [string, string];
       const parts = normalizeLatex(latex)

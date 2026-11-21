@@ -74,7 +74,7 @@ export interface ToolItem {
 export type Item = MathItem | TextItem | PlotItem | CardItem | ToolItem;
 export type NewItem = Omit<MathItem, "id"> | Omit<TextItem, "id"> | Omit<PlotItem, "id">;
 
-export type ExerciseKind = "solve" | "factor" | "expand" | "divide";
+export type ExerciseKind = "solve" | "factor" | "expand" | "divide" | "simplify";
 export type Topic = "lineal" | "cuadratica" | "factorizar" | "operaciones" | "division";
 
 export interface Exercise {
