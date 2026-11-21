@@ -1,0 +1,21 @@
+.gauss { display: grid; gap: 8px; max-width: 560px; }
+.gauss-expr { font-size: 22px; }
+.in-card .gauss-expr { display: none; }
+.gauss-why { font-size: 12.5px; color: var(--subtext0); line-height: 1.45; }
+.gauss-note { font-size: 12.5px; color: var(--peach); }
+.gauss-note:empty { display: none; }
+.gauss-rows { display: grid; gap: 4px; }
+.gauss-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 13px; }
+.gauss-row .lbl { color: var(--overlay1); min-width: 110px; }
+.gauss-row .num { font: 600 13px var(--mono); padding: 1px 7px; border-radius: 6px; background: var(--surface0); color: var(--text); }
+.gauss-row.q .num { color: var(--sky); }
+.gauss-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gauss-chips .chip { font: 600 13px var(--mono); padding: 5px 10px; border-radius: 999px; background: var(--surface0); color: var(--text); border: 1px solid var(--surface1); }
+.gauss-chips .chip:hover { border-color: var(--mauve); }
+.gauss-chips .chip.miss { color: var(--overlay1); background: transparent; border-style: dashed; }
+.gauss-chips .chip.root { color: var(--crust); background: var(--green); border-color: var(--green); animation: gauss-pop .4s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes gauss-pop { from { transform: scale(.7); } }
+.gauss-found { display: flex; flex-wrap: wrap; gap: 6px; }
+.gauss-found:empty { display: none; }
+.gauss-found .use { font-size: 12.5px; background: #a6da951f; color: var(--green); border: 1px solid #a6da9555; }
+.gauss-found .use:hover { background: #a6da9533; }

@@ -18,6 +18,8 @@ export interface RuffiniData {
   wrong?: { cell: string; value: string; hint: string };
   /** Exercise card that receives the result line. */
   card?: string;
+  /** Factor already taken out (e.g. "x" after Gauss factored out x), written in front of the factored form. */
+  prefix?: string;
 }
 
 export function startRuffini(dividend: string, coeffs: number[], root?: number): RuffiniData {
@@ -149,6 +151,15 @@ export function rufResult(d: RuffiniData): { quotient: string; remainder: string
   const quotient = polyTeX(s.slice(0, -1));
   const remainder = formatNumber(s.at(-1)!);
   return { quotient, remainder, latex: `C=${quotient},\\ R=${remainder}` };
+}
+
+/** `prefix·(x − r)·C(x)` when the division is exact (a factoring step); null otherwise. */
+export function rufFactorLatex(d: RuffiniData): string | null {
+  const res = rufResult(d);
+  if (!res || res.remainder !== "0") return null;
+  const r = d.root!;
+  const lin = r === 0 ? "x" : r < 0 ? `x+${formatNumber(-r)}` : `x-${formatNumber(r)}`;
+  return `${d.prefix ?? ""}\\left(${lin}\\right)\\left(${res.quotient}\\right)`;
 }
 
 /** One line for `gebra board`. */

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyCell, cellOrder, expectedTable, nextCell, parseDivision, rufResult, startRuffini, summarize } from "../src/shared/tools/ruffini";
+import { applyCell, cellOrder, expectedTable, nextCell, parseDivision, rufFactorLatex, rufResult, startRuffini, summarize } from "../src/shared/tools/ruffini";
 
 describe("parseDivision", () => {
   test("reads dividend coefficients and the root of x − a", () => {
@@ -76,5 +76,22 @@ describe("guided filling", () => {
     expect(r.ok).toBe(true);
     expect(r.data.root).toBe(1);
     expect(summarize(free as never)).toBe("x^2-1 ÷ (x−?): 0/9 celdas · sigue c0 (coeficiente de x²)");
+  });
+});
+
+describe("factored form for factor/solve cards", () => {
+  const done = (prefix?: string) => {
+    let d = startRuffini("x^3-7x+6", [1, 0, -7, 6], 2);
+    if (prefix) d = { ...d, prefix };
+    for (const [c, v] of [["c0", "1"], ["c1", "0"], ["c2", "-7"], ["c3", "6"], ["r", "2"], ["s0", "1"], ["p1", "2"], ["s1", "2"], ["p2", "4"], ["s2", "-3"], ["p3", "-6"], ["s3", "0"]] as const)
+      d = applyCell(d, c, v).data;
+    return d;
+  };
+  test("remainder 0 gives (x − r)·C, with an optional prefix", () => {
+    expect(rufFactorLatex(done())).toBe("\\left(x-2\\right)\\left(x^{2}+2x-3\\right)");
+    expect(rufFactorLatex(done("x"))).toBe("x\\left(x-2\\right)\\left(x^{2}+2x-3\\right)");
+  });
+  test("a non-zero remainder or an unfinished table has no factored form", () => {
+    expect(rufFactorLatex(startRuffini("x^2+1", [1, 0, 1], 1))).toBeNull();
   });
 });

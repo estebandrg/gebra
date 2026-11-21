@@ -8,6 +8,7 @@ import {
   expectedTable,
   nextCell,
   parseDivision,
+  rufFactorLatex,
   rufResult,
   startRuffini,
   type RuffiniData,
@@ -31,9 +32,10 @@ function focusNext(board: BoardView, id: string) {
 }
 
 /** Open a Ruffini table (inside a card when given). Gauss uses it with a preset root. */
-export function openRuffini(board: BoardView, dividend: string, coeffs: number[], root?: number, cardId?: string): ToolItem {
+export function openRuffini(board: BoardView, dividend: string, coeffs: number[], root?: number, cardId?: string, prefix?: string): ToolItem {
   const data = startRuffini(dividend, coeffs, root);
   if (cardId) data.card = cardId;
+  if (prefix) data.prefix = prefix;
   const item = board.addTool("ruffini", data as unknown as Record<string, unknown>, cardId);
   focusNext(board, item.id);
   return item;
@@ -83,7 +85,8 @@ function writeResult(board: BoardView, id: string) {
   const d = dataOf(item);
   const res = rufResult(d);
   if (!res) return;
-  if (d.card && board.get(d.card)) board.addCardStep(d.card, res.latex, false);
+  const latex = resultLatex(board, d) ?? res.latex;
+  if (d.card && board.get(d.card)) board.addCardStep(d.card, latex, false);
   else {
     const spot = board.freeSpot(320, 60);
     board.addMath(spot.x, spot.y, res.latex, {}, false);
@@ -92,12 +95,22 @@ function writeResult(board: BoardView, id: string) {
   board.toolChanged(item);
 }
 
+/** In factor/solve cards an exact division is written as a factoring step instead of C, R. */
+function resultLatex(board: BoardView, d: RuffiniData): string | null {
+  const card = d.card ? board.get(d.card) : undefined;
+  const ex = card?.kind === "card" ? board.board.exercises.find((e) => e.id === card.exercise) : undefined;
+  if (!ex || ex.kind === "divide") return null;
+  const f = rufFactorLatex(d);
+  return f && (ex.kind === "solve" ? `${f}=0` : f);
+}
+
 function reset(board: BoardView, id: string) {
   const item = board.get(id) as ToolItem | undefined;
   if (!item) return;
   const old = dataOf(item);
   const fresh = startRuffini(old.dividend, old.coeffs, old.fixedRoot ? old.root : undefined);
   if (old.card) fresh.card = old.card;
+  if (old.prefix) fresh.prefix = old.prefix;
   item.data = fresh as unknown as Record<string, unknown>;
   board.toolChanged(item);
   focusNext(board, id);
@@ -190,7 +203,14 @@ function render(item: ToolItem, content: HTMLElement, board: BoardView) {
   const write = content.querySelector<HTMLButtonElement>(".ruf-write")!;
   write.hidden = !res;
   write.disabled = !!item.data.written;
-  write.textContent = item.data.written ? "Escrito ✓" : d.card ? "Escribir el resultado en la tarjeta" : "Escribir el resultado en la pizarra";
+  const factored = res ? resultLatex(board, d) : null;
+  write.textContent = item.data.written
+    ? "Escrito ✓"
+    : factored
+      ? "Escribir la factorización en la tarjeta"
+      : d.card
+        ? "Escribir el resultado en la tarjeta"
+        : "Escribir el resultado en la pizarra";
 }
 
 /** Free Ruffini from the selected polynomial line. */
