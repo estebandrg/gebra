@@ -22,8 +22,8 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 - T4 S4 — Gauss candidates widget, hands a root to Ruffini — inline — commit: pending
 - T5 S5 — theory/formulas side panel, insert into board — inline — commit: pending
 - T6 S1-S8 — README/AGENTS docs, browser E2E check — inline — commit: pending
-- T7 S7 — chat panel says "Asistente" and shows the model reported by `gebra watch` — inline — commit: pending
-- T8 S8 — resizable exercise cards (persisted size) — inline — commit: pending
+- T7 S7 — chat panel says "Asistente" and shows the model reported by `gebra watch` — inline — commit: a69dc72
+- T8 S8 — resizable exercise cards (persisted size) — inline — commit: a69dc72
 
 ## Log
 
