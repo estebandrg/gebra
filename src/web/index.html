@@ -8,20 +8,25 @@
   </head>
   <body>
     <header class="toolbar">
-      <div class="brand">gebra<span>·</span><small>pizarra de álgebra</small></div>
+      <div class="brand"><span class="logo">x²</span>gebra<small>pizarra de álgebra</small></div>
       <nav class="tools">
-        <button data-tool="math" title="Nueva ecuación (N)"><b>＋</b> Ecuación</button>
-        <button data-tool="text" title="Nota de texto (T)"><b>T</b> Nota</button>
-        <button data-tool="plot" title="Graficar lo seleccionado (G)"><b>📈</b> Graficar</button>
-        <button data-tool="exercise" title="Generar ejercicio (E)"><b>🎲</b> Ejercicio</button>
-        <span class="sep"></span>
-        <button data-tool="home" title="Volver al inicio (H)">⌂</button>
-        <button data-tool="zoom-out" title="Alejar">−</button>
-        <span class="zoom-label" id="zoom-label">100%</span>
-        <button data-tool="zoom-in" title="Acercar">＋</button>
-        <span class="sep"></span>
-        <button data-tool="clear" title="Borrar toda la pizarra" class="danger">🧹</button>
-        <button data-tool="help" title="Atajos (?)">?</button>
+        <div class="group">
+          <button data-tool="math" class="primary" title="Nueva ecuación (N)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="label">Ecuación</span></button>
+          <button data-tool="text" title="Nota de texto (T)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg><span class="label">Nota</span></button>
+          <button data-tool="plot" title="Graficar lo seleccionado (G)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15c3-8 6-8 9-2 1.5 3 3 3 4 1"/></svg><span class="label">Graficar</span></button>
+          <button data-tool="exercise" title="Generar ejercicio (E)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg><span class="label">Ejercicio</span></button>
+        </div>
+        <span class="spacer"></span>
+        <div class="group">
+          <button data-tool="zoom-out" class="icon" title="Alejar" aria-label="Alejar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+          <span class="zoom-label" id="zoom-label">100%</span>
+          <button data-tool="zoom-in" class="icon" title="Acercar" aria-label="Acercar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button data-tool="home" class="icon" title="Volver al inicio (H)" aria-label="Volver al inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg></button>
+        </div>
+        <div class="group">
+          <button data-tool="clear" class="icon danger" title="Borrar toda la pizarra" aria-label="Borrar toda la pizarra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+          <button data-tool="help" class="icon" title="Atajos (?)" aria-label="Atajos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.5" r=".6" fill="currentColor"/></svg></button>
+        </div>
       </nav>
       <button class="chat-toggle" id="chat-toggle" title="Mostrar/ocultar al profe">
         <span class="dot" id="presence-dot"></span> Profe
@@ -35,19 +40,19 @@
           <svg class="ink" id="ink" width="1" height="1"></svg>
           <div class="pres-layer" id="pres-layer"></div>
         </div>
-        <div class="empty-hint" id="empty-hint">
+        <div class="empty-hint" id="empty-hint"><div class="empty-card">
           <h2>Tu pizarra de álgebra</h2>
           <p><kbd>doble clic</kbd> en cualquier lugar para escribir una ecuación.</p>
           <p><kbd>Enter</kbd> crea el siguiente paso debajo; verifico cada paso con el CAS.</p>
           <p><kbd>E</kbd> genera un ejercicio · <kbd>G</kbd> grafica · preguntale al profe a la derecha →</p>
-        </div>
+        </div></div>
       </section>
 
       <aside class="chat" id="chat">
         <div class="chat-head">
-          <div>
-            <strong>Profe</strong>
-            <span class="presence" id="presence-text">desconectado</span>
+          <div class="chat-id">
+            <span class="avatar">P</span>
+            <div><strong>Profe</strong><span class="presence" id="presence-text">desconectado</span></div>
           </div>
           <div class="modes" id="modes">
             <button data-mode="explain" class="active" title="Presentación completa en la pizarra">Explicame</button>
@@ -62,7 +67,7 @@
         <form class="composer" id="composer">
           <div class="focus-line" id="focus-line"></div>
           <textarea id="ask-input" rows="2" placeholder="Preguntale algo sobre lo que hay en la pizarra…  ($x^2$ = matemática)"></textarea>
-          <button type="submit" title="Enviar (Enter)">➤</button>
+          <button type="submit" title="Enviar (Enter)" aria-label="Enviar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
         </form>
       </aside>
     </main>
@@ -71,10 +76,10 @@
       <div class="stage-title"><span id="stage-title"></span> <small id="stage-count"></small></div>
       <div class="caption" id="caption"></div>
       <div class="stage-controls">
-        <button data-ctl="restart" title="Desde el principio">⏮</button>
-        <button data-ctl="prev" title="Paso anterior (←)">◀</button>
-        <button data-ctl="toggle" title="Pausa / seguir (espacio)" id="ctl-toggle">⏸</button>
-        <button data-ctl="next" title="Siguiente paso (→)">▶</button>
+        <button data-ctl="restart" title="Desde el principio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5l-9 7 9 7z"/></svg></button>
+        <button data-ctl="prev" title="Paso anterior (←)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button data-ctl="toggle" title="Pausa / seguir (espacio)" id="ctl-toggle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button>
+        <button data-ctl="next" title="Siguiente paso (→)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
         <select id="ctl-speed" title="Velocidad">
           <option value="0.6">0.6×</option>
           <option value="1" selected>1×</option>
@@ -82,7 +87,7 @@
           <option value="2">2×</option>
         </select>
         <button data-ctl="keep" title="Pasar lo escrito por el profe a tu pizarra">Conservar</button>
-        <button data-ctl="close" title="Cerrar presentación (Esc)">✕</button>
+        <button data-ctl="close" title="Cerrar presentación (Esc)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
       <div class="progress"><div id="progress-bar"></div></div>
     </footer>

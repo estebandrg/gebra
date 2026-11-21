@@ -1,5 +1,6 @@
 // KaTeX helpers: block math, and rich text where `$...$` segments are math.
 import katex from "katex";
+import { richTokens } from "./rich";
 
 const OPTS = { throwOnError: false, trust: true, strict: "ignore" as const, output: "html" as const };
 
@@ -13,22 +14,16 @@ export function renderMath(el: HTMLElement, latex: string) {
 
 export function renderRich(el: HTMLElement, text: string) {
   el.textContent = "";
-  const parts = text.split(/(\$[^$]+\$)/g);
-  for (const part of parts) {
-    if (part.startsWith("$") && part.endsWith("$") && part.length > 2) {
+  let strong: HTMLElement | null = null;
+  for (const tok of richTokens(text)) {
+    if (!tok.bold) strong = null;
+    else if (!strong) strong = el.appendChild(document.createElement("strong"));
+    const parent = strong ?? el;
+    if (tok.kind === "math") {
       const span = document.createElement("span");
-      katex.render(part.slice(1, -1), span, OPTS);
-      el.appendChild(span);
-    } else if (part) {
-      // **bold** support for short emphasis
-      part.split(/(\*\*[^*]+\*\*)/g).forEach((seg) => {
-        if (seg.startsWith("**") && seg.endsWith("**") && seg.length > 4) {
-          const b = document.createElement("strong");
-          b.textContent = seg.slice(2, -2);
-          el.appendChild(b);
-        } else if (seg) el.appendChild(document.createTextNode(seg));
-      });
-    }
+      katex.render(tok.value, span, OPTS);
+      parent.appendChild(span);
+    } else parent.appendChild(document.createTextNode(tok.value));
   }
 }
 

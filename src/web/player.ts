@@ -15,6 +15,8 @@ interface PresEntry {
 }
 
 const color = (c: Chalk | undefined, fallback: Chalk) => `var(--chalk-${c ?? fallback})`;
+const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg>';
 const jitter = (n = 1.6) => (Math.random() - 0.5) * 2 * n;
 
 export class Player {
@@ -199,7 +201,12 @@ export class Player {
     const n = this.pres?.steps.length ?? 0;
     const last = this.step >= n - 1 && !this.animating;
     document.getElementById("stage-count")!.textContent = last ? `Paso ${n}/${n} · fin` : `Paso ${this.step + 1}/${n}`;
-    document.getElementById("ctl-toggle")!.textContent = this.paused ? "⏵" : "⏸";
+    const toggle = document.getElementById("ctl-toggle")!;
+    const icon = this.paused ? "play" : "pause";
+    if (toggle.dataset.icon !== icon) {
+      toggle.dataset.icon = icon;
+      toggle.innerHTML = this.paused ? ICON_PLAY : ICON_PAUSE;
+    }
     (document.getElementById("progress-bar") as HTMLElement).style.width = `${(100 * (this.step + 1)) / Math.max(1, n)}%`;
   }
 
