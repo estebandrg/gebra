@@ -14,7 +14,7 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 
 ## Tasks
 
-- T1 S1 — exercise card item: model, render, drag as a unit, read-only statement, steps inside with CAS ✓/✗, solved state, CLI board view, agent docs — inline — commit: pending
+- T1 S1 — exercise card item: model, render, drag as a unit, read-only statement, steps inside with CAS ✓/✗, solved state, CLI board view, agent docs — inline — commit: 4ff19d6
 - T2 S2 S6 — guided Ruffini table widget (pure logic + UI), from division cards and from a selected polynomial; result goes into the card — inline — commit: pending
 - T3 S3 — guided quadratic-formula widget — inline — commit: pending
 - T4 S4 — Gauss candidates widget, hands a root to Ruffini — inline — commit: pending
@@ -26,3 +26,5 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 - L1 (user, verbatim): "deberias poder hacer una tarjeta con los enunciados, simplemente para que no sean componentes modificables. 1 de enunciado y abajo el de trabajo. Tambien añadi mas funcionalidades de UI/UX que me ayuden en el aprendizaje, ejemplo cuando necesite hacer ruffinni poder hacerlo de una forma intuitiva  simulando igual el cuadro real. y asi. Que esto sea increible"
 - L2 (decisions): card = "Tarjeta única con trabajo adentro (Recomendado)"; Ruffini = "Guiado, celda por celda (Recomendado)"; extra tools = "Resolvente guiada, Gauss (candidatos p/q), Panel de teoría / fórmulas"; delivery = "Todo junto, commit por unidad (Recomendado)".
 - L3 (evidence): prior Catppuccin restyle committed as eada073 on this branch before T1.
+- L4 (evidence T1): card verified in headless Firefox on an isolated server (PORT=5191, temp GEBRA_DATA): exercise → card c1, typed 2x=4 ↵ x=2 → ✓ ✓ and "¡Resuelto!", CLI board shows card/lines/status; division card shows "Escribí C = …, R = … o usá Ruffini". Fixed: legacy "this is the statement" guard blocked editing the first card line; nested ✕/handle visible when the card was selected. 64 tests + tsc green.
+- L5 (seam for T2-T5): tools are `ToolItem` (kind "tool", `tool`, optional `card`, `data`). Pure logic + `summarize(data)` in `src/shared/tools/<tool>.ts`; widget in `src/web/tools/<tool>.ts` `register(board)` which may push `board.cardActions` and set `board.toolRenderers`; create tools with `board.addTool(tool, data, cardId)`, persist with `board.toolChanged(item)`, add result lines with `board.addCardStep(cardId, latex, edit)`. Tool CSS goes in `src/web/tools/<tool>.css` imported from the widget module.
