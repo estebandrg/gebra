@@ -88,7 +88,10 @@ and the learner's work lines inside (`m…`, each CAS-checked against the previo
 Target `c1` in a presentation to point at the statement; target its lines by their `m…` ids.
 
 Cards also hold interactive **tools** (`w1`, `w2`…: Ruffini table, quadratic formula, Gauss candidates) that the learner
-fills in; `gebra board` shows a one-line summary of each tool's state under its card.
+fills in; `gebra board` shows a one-line summary of each tool's state under its card. The learner opens them from the card
+buttons (**Ruffini** on divisions, **Resolvente** on quadratics, **Gauss** on cubic+ polynomials) or the toolbar; in
+`tutor` mode, pointing them to the right tool is a great hint. The **Teoría** sheet (`F`) has the formulas they can
+insert into the board.
 
 ## 5. Other commands
 
