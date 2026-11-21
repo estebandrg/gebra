@@ -53,3 +53,24 @@ describe("TP2 catalog", () => {
     expect(catalogExercise(item)).toMatchObject({ kind: "solve", topic: "cuadratica", latex: item.latex });
   });
 });
+
+import { onBoard, searchCatalog } from "../src/shared/catalog";
+
+describe("catalog search and board marks", () => {
+  test("empty query returns everything, an id returns that item", () => {
+    expect(searchCatalog("").length).toBe(catalogItems().length);
+    expect(searchCatalog("5a").map((i) => i.id)).toEqual(["5a"]);
+  });
+  test("matches group titles and statement text ignoring LaTeX noise", () => {
+    expect(searchCatalog("diferencia de cuadrados").every((i) => i.id.startsWith("6"))).toBe(true);
+    expect(searchCatalog("trinomio").length).toBe(4);
+    expect(searchCatalog("35xb").map((i) => i.id)).toEqual(["5a"]);
+    expect(searchCatalog("zzzz")).toEqual([]);
+  });
+  test("an item is on the board once its exercise was added", () => {
+    const item = findCatalogItem("12c")!;
+    expect(onBoard([], item)).toBe(false);
+    expect(onBoard([catalogExercise(item)], item)).toBe(true);
+    expect(onBoard([catalogExercise(findCatalogItem("12d")!)], item)).toBe(false);
+  });
+});

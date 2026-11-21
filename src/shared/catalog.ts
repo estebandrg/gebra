@@ -216,3 +216,18 @@ export function catalogExercise(item: CatalogItem): Exercise {
     answer,
   };
 }
+
+/** Items matching a search: by id ("5a"), by group title or by statement text. Empty query matches everything. */
+export function searchCatalog(query: string): CatalogItem[] {
+  const q = query.trim().toLowerCase().replace(/\s+/g, "");
+  if (!q) return catalogItems();
+  const plain = (s: string) => s.toLowerCase().replace(/\\left|\\right|\\cdot|[\s{}\\]/g, "");
+  return CATALOG.flatMap((s) =>
+    s.groups.flatMap((g) => g.items.filter((i) => i.id === q || plain(i.latex).includes(q) || plain(g.title).includes(q) || plain(i.prompt).includes(q))),
+  );
+}
+
+/** Whether an exercise from this catalog item is already on the board (card exercises carry the item id in their id). */
+export function onBoard(exercises: Pick<Exercise, "id">[], item: CatalogItem): boolean {
+  return exercises.some((e) => e.id.startsWith(`tp2-${item.id}-`));
+}
