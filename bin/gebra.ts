@@ -3,8 +3,10 @@
 // sends live presentations and chat messages, and exposes the CAS.
 import { readFileSync } from "node:fs";
 import * as cas from "../src/shared/cas";
+import { cardLines, cardProgress } from "../src/shared/cards";
 import { checkExerciseStep, exerciseAnswerTeX } from "../src/shared/exercises";
-import type { Ask, Board, ChatMessage, Item } from "../src/shared/types";
+import { TOOL_LABEL, toolSummary } from "../src/shared/tools";
+import type { Ask, Board, CardItem, ChatMessage, Item } from "../src/shared/types";
 
 const BASE = process.env.GEBRA_URL ?? "http://localhost:5179";
 
@@ -56,6 +58,8 @@ function describeItem(item: Item): string {
   const pos = `(${Math.round(item.x)},${Math.round(item.y)})`;
   if (item.kind === "math") return `[${item.id}] ${pos} math: ${item.latex}`;
   if (item.kind === "text") return `[${item.id}] ${pos} texto: ${item.text}`;
+  if (item.kind === "card") return `[${item.id}] ${pos} tarjeta del ejercicio ${item.exercise}`;
+  if (item.kind === "tool") return `[${item.id}] ${pos} herramienta ${TOOL_LABEL[item.tool]}: ${toolSummary(item)}`;
   return `[${item.id}] ${pos} gráfica ${item.w}x${item.h}: ${item.exprs.join(" ; ")}  x∈[${item.xRange.join(", ")}]`;
 }
 
@@ -63,8 +67,11 @@ export function renderBoard(board: Board): string {
   const lines: string[] = [];
   const byChain = new Map<string, Item[]>();
   const loose: Item[] = [];
+  const cards: CardItem[] = [];
   for (const it of board.items) {
-    if (it.kind === "math" && it.chain) {
+    if (it.kind === "card") cards.push(it);
+    else if ((it.kind === "math" || it.kind === "tool") && it.card && board.items.some((c) => c.id === it.card)) continue;
+    else if (it.kind === "math" && it.chain) {
       const list = byChain.get(it.chain) ?? [];
       list.push(it);
       byChain.set(it.chain, list);
@@ -73,6 +80,23 @@ export function renderBoard(board: Board): string {
   const sel = new Set(board.selection);
   const mark = (it: Item) => (sel.has(it.id) ? "  ← seleccionado" : "");
 
+  for (const card of cards) {
+    const p = cardProgress(board, card, cas.compareSteps);
+    const ex = p.exercise;
+    lines.push(
+      `\nTarjeta ${card.id}${ex ? ` — ejercicio ${ex.id} (${ex.topic} nivel ${ex.level}, ${ex.kind}) · enunciado fijo: "${ex.prompt}": ${ex.latex}` : " — (ejercicio perdido)"}${mark(card)}`,
+    );
+    const byId = new Map(p.lines.map((l) => [l.id, l]));
+    const work = cardLines(board, card.id).filter((l) => l.latex.trim());
+    if (!work.length) lines.push("  (sin pasos todavía)");
+    work.forEach((it, i) => {
+      const c = byId.get(it.id)?.check;
+      const check = !c ? "" : c.status === "equivalent" ? "  ✓ equivalente" : c.status === "different" ? `  ✗ ${c.reason}` : `  ? ${c.reason}`;
+      lines.push(`  ${i + 1}. [${it.id}] math: ${it.latex}${check}${mark(it)}`);
+    });
+    for (const t of board.items) if (t.kind === "tool" && t.card === card.id) lines.push(`  · [${t.id}] ${TOOL_LABEL[t.tool]}: ${toolSummary(t)}`);
+    if (ex) lines.push(`  estado: ${p.status === "empty" ? "sin pasos" : `${p.status} — ${p.reason}`} · respuesta esperada (no revelar en modo tutor): ${exerciseAnswerTeX(ex)}`);
+  }
   for (const [chain, items] of byChain) {
     items.sort((a, b) => a.y - b.y);
     const ex = board.exercises.find((e) => items.some((i) => i.kind === "math" && i.exercise === e.id));
@@ -104,7 +128,7 @@ export function renderBoard(board: Board): string {
       lines.push(`  ${describeItem(it)}${extra}${mark(it)}`);
     }
   }
-  const pending = board.exercises.filter((e) => !board.items.some((i) => i.kind === "math" && i.exercise === e.id));
+  const pending = board.exercises.filter((e) => !board.items.some((i) => (i.kind === "math" || i.kind === "card") && i.exercise === e.id));
   for (const ex of pending) lines.push(`\nEjercicio sin empezar ${ex.id}: ${ex.prompt}: ${ex.latex}`);
   const head = `Pizarra (${board.items.length} ítems, actualizada ${board.updatedAt}) · vista x=${Math.round(board.view.x)} y=${Math.round(board.view.y)} zoom=${board.view.zoom.toFixed(2)}`;
   return head + (lines.length ? lines.join("\n") : "\n  (vacía)");

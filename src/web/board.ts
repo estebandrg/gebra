@@ -2,8 +2,10 @@
 // verified by the CAS, notes, plots, selection, drag, undo and persistence.
 import { MathfieldElement } from "mathlive";
 import { compareSteps, parseMath, realRoots, type StepCheck } from "../shared/cas";
+import { cardLines, cardProgress } from "../shared/cards";
 import { checkExerciseStep } from "../shared/exercises";
-import type { Board, Exercise, Item, MathItem, NewItem, PlotItem, TextItem } from "../shared/types";
+import { TOOL_LABEL } from "../shared/tools";
+import type { Board, CardItem, Exercise, Item, MathItem, NewItem, PlotItem, TextItem, ToolItem, ToolKind, Topic } from "../shared/types";
 import { buildPlot } from "./plot";
 import { el, renderMath, renderRich, toast } from "./render";
 
@@ -11,6 +13,33 @@ MathfieldElement.fontsDirectory = "/vendor/mathlive/fonts";
 MathfieldElement.soundsDirectory = null;
 
 type Listener = () => void;
+
+const TOPIC_LABEL: Record<Topic, string> = {
+  lineal: "Ecuación lineal",
+  cuadratica: "Cuadrática",
+  factorizar: "Factorizar",
+  operaciones: "Operaciones",
+  division: "División",
+};
+const LOCK_ICON =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+
+/**
+ * Renders a tool widget into `content`. Called on every board render: build the DOM once
+ * (e.g. when `content` is empty) and only update it afterwards, so inputs keep focus.
+ * Persist state by mutating `item.data` and calling `board.toolChanged(item)`.
+ */
+export type ToolRenderer = (item: ToolItem, content: HTMLElement, board: BoardView) => void;
+
+/** A button a card offers (Ruffini, quadratic formula, …); tools register themselves here. */
+export interface CardAction {
+  id: string;
+  label: string;
+  title: string;
+  /** Whether this card should show the action. */
+  when: (ex: Exercise) => boolean;
+  run: (card: CardItem, ex: Exercise) => void;
+}
 
 const stepCache = new Map<string, StepCheck>();
 function checkStep(prev: string, cur: string): StepCheck {
@@ -37,6 +66,8 @@ export class BoardView {
   private temp = new Map<string, string>();
   /** Set while a presentation runs so the board ignores clicks that would edit. */
   locked = false;
+  readonly cardActions: CardAction[] = [];
+  readonly toolRenderers = new Map<ToolKind, ToolRenderer>();
 
   onChange(fn: Listener) {
     this.listeners.push(fn);
@@ -230,14 +261,32 @@ export class BoardView {
         node.remove();
         this.elements.delete(id);
       }
-    for (const item of this.board.items) this.renderItem(item);
+    // cards first so their lines have a body to live in
+    for (const item of this.board.items) if (item.kind === "card") this.renderItem(item);
+    for (const item of this.board.items) if (item.kind !== "card") this.renderItem(item);
     document.getElementById("empty-hint")!.hidden = this.board.items.length > 0;
+  }
+
+  /** Card body for a card line, the free board otherwise. */
+  private hostFor(item: Item): HTMLElement {
+    if ((item.kind !== "math" && item.kind !== "tool") || !item.card) return this.itemsEl;
+    return this.elements.get(item.card)?.querySelector<HTMLElement>(".card-body") ?? this.itemsEl;
+  }
+
+  /** Insert a card line's node at its step position (board order) without moving other nodes. */
+  private placeInCard(item: MathItem | ToolItem, node: HTMLElement, body: HTMLElement) {
+    const order = this.board.items.filter((i) => (i.kind === "math" || i.kind === "tool") && i.card === item.card);
+    const after = order.slice(order.findIndex((l) => l.id === item.id) + 1);
+    const next = after.map((l) => this.elements.get(l.id)).find((n) => n?.parentElement === body);
+    body.insertBefore(node, next ?? null);
   }
 
   private renderItem(item: Item) {
     let node = this.elements.get(item.id);
+    const host = this.hostFor(item);
+    const inCard = host !== this.itemsEl;
     if (!node) {
-      node = el("div", `item ${item.kind}`, this.itemsEl);
+      node = el("div", `item ${item.kind}`);
       node.dataset.id = item.id;
       const handle = el("div", "handle", node);
       handle.textContent = "⋮⋮";
@@ -250,28 +299,44 @@ export class BoardView {
         e.stopPropagation();
         this.remove([item.id]);
       });
-      el("div", "content", node);
+      if (item.kind === "card") this.buildCard(item, node);
+      else el("div", "content", node);
       this.elements.set(item.id, node);
     }
-    node.style.left = `${item.x}px`;
-    node.style.top = `${item.y}px`;
+    if (node.parentElement !== host) {
+      if (inCard) this.placeInCard(item as MathItem | ToolItem, node, host);
+      else host.appendChild(node);
+    }
+    node.classList.toggle("in-card", inCard);
+    node.style.left = inCard ? "" : `${item.x}px`;
+    node.style.top = inCard ? "" : `${item.y}px`;
     node.classList.toggle("selected", this.board.selection.includes(item.id));
     if (this.editing?.id === item.id) return;
 
     const content = node.querySelector<HTMLElement>(".content")!;
-    node.querySelector(".badge")?.remove();
+    node.querySelector(":scope > .badge")?.remove();
     if (item.kind === "math") {
       const latex = this.temp.get(item.id) ?? item.latex;
       renderMath(content, latex);
       const parsed = parseMath(item.latex);
       node.classList.toggle("invalid", parsed.kind === "invalid");
       node.title = parsed.kind === "invalid" ? `No lo entiendo: ${parsed.error}` : "";
-      const head = this.board.exercises.find((e) => e.id === item.exercise && this.chainOf(item)[0]?.id === item.id);
+      const head = !item.card && this.board.exercises.find((e) => e.id === item.exercise && this.chainOf(item)[0]?.id === item.id);
       node.classList.toggle("exercise-head-line", !!head);
       this.renderBadge(item, node);
     } else if (item.kind === "text") {
       renderRich(content, item.text);
       node.className = `item text${item.color ? ` c-${item.color}` : ""}${this.board.selection.includes(item.id) ? " selected" : ""}`;
+    } else if (item.kind === "card") {
+      this.renderCard(item, node, content);
+    } else if (item.kind === "tool") {
+      if (!content.dataset.tool) {
+        content.dataset.tool = item.tool;
+        const head = el("div", "tool-title", node);
+        head.textContent = TOOL_LABEL[item.tool];
+        node.insertBefore(head, content);
+      }
+      this.toolRenderers.get(item.tool)?.(item, content, this);
     } else {
       const sig = JSON.stringify([item.exprs, item.xRange, item.yRange, item.marks, item.w, item.h]);
       if (content.dataset.sig !== sig) {
@@ -283,6 +348,7 @@ export class BoardView {
   }
 
   private renderBadge(item: MathItem, node: HTMLElement) {
+    if (item.card) return this.renderCardLineBadge(item, node);
     const chain = this.chainOf(item);
     const idx = chain.findIndex((i) => i.id === item.id);
     const ex = this.board.exercises.find((e) => e.id === item.exercise);
@@ -308,6 +374,123 @@ export class BoardView {
     if (r.status === "equivalent") badge("ok", "✓", r.reason);
     else if (r.status === "different") badge("bad", "✗ revisá este paso", r.reason);
     else if (item.latex.trim()) badge("unk", "?", r.reason);
+  }
+
+  private renderCardLineBadge(item: MathItem, node: HTMLElement) {
+    const card = this.get(item.card!);
+    if (card?.kind !== "card") return;
+    const p = cardProgress(this.board, card, checkStep);
+    const line = p.lines.find((l) => l.id === item.id);
+    const b = (cls: string, text: string, title: string) => {
+      const span = el("span", `badge ${cls}`, node);
+      span.textContent = text;
+      span.title = title;
+    };
+    if (p.status === "solved" && p.lines.at(-1)?.id === item.id) return b("solved", "¡Resuelto!", p.reason);
+    const r = line?.check;
+    if (!r) return;
+    if (r.status === "equivalent") b("ok", "✓", r.reason);
+    else if (r.status === "different") b("bad", "✗ revisá", r.reason);
+    else b("unk", "?", r.reason);
+  }
+
+  // ------------------------------------------------------------ cards
+
+  private buildCard(card: CardItem, node: HTMLElement) {
+    const head = el("div", "card-head", node);
+    const kicker = el("div", "card-kicker", head);
+    kicker.innerHTML = LOCK_ICON;
+    el("span", "card-prompt", kicker);
+    el("span", "card-meta", kicker);
+    el("div", "content", head);
+    el("div", "card-body", node);
+    const foot = el("div", "card-foot", node);
+    el("div", "card-status", foot);
+    el("div", "card-actions", foot);
+    node.title = "";
+    node.dataset.cardId = card.id;
+  }
+
+  private renderCard(card: CardItem, node: HTMLElement, content: HTMLElement) {
+    const ex = this.board.exercises.find((e) => e.id === card.exercise);
+    node.querySelector<HTMLElement>(".card-prompt")!.textContent = ex ? `${ex.prompt}` : "Ejercicio";
+    node.querySelector<HTMLElement>(".card-meta")!.textContent = ex ? `${TOPIC_LABEL[ex.topic] ?? ex.topic} · nivel ${ex.level}` : "";
+    renderMath(content, this.temp.get(card.id) ?? ex?.latex ?? "");
+    content.title = "Enunciado (fijo): trabajá en los pasos de abajo";
+    const p = cardProgress(this.board, card, checkStep);
+    node.classList.toggle("solved", p.status === "solved");
+    node.classList.toggle("has-error", p.lines.some((l) => l.check?.status === "different"));
+    const status = node.querySelector<HTMLElement>(".card-status")!;
+    status.className = `card-status s-${p.status}`;
+    status.textContent =
+      p.status === "solved"
+        ? "¡Resuelto! 🎉"
+        : p.status === "empty"
+          ? ex?.kind === "divide"
+            ? "Escribí C = …, R = … o usá Ruffini"
+            : "Escribí el primer paso"
+          : p.lines.some((l) => l.check?.status === "different")
+            ? "Hay un paso para revisar"
+            : `${p.lines.length} paso${p.lines.length === 1 ? "" : "s"} · ${p.reason || "seguí"}`;
+    if (ex && p.status === "solved" && !ex.solved) {
+      ex.solved = true;
+      toast("¡Ejercicio resuelto! 🎉");
+      this.scheduleSave();
+    }
+    const actions = node.querySelector<HTMLElement>(".card-actions")!;
+    const wanted = ex ? this.cardActions.filter((a) => a.when(ex)) : [];
+    const sig = wanted.map((a) => a.id).join(",");
+    if (actions.dataset.sig !== sig || !actions.childElementCount) {
+      actions.dataset.sig = sig;
+      actions.textContent = "";
+      const add = el("button", "card-btn primary", actions);
+      add.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Paso';
+      add.title = "Agregar un paso de trabajo";
+      add.addEventListener("click", () => this.addCardStep(card.id));
+      for (const a of wanted) {
+        const b = el("button", "card-btn", actions);
+        b.textContent = a.label;
+        b.title = a.title;
+        b.addEventListener("click", () => {
+          const cur = this.get(card.id);
+          const e = cur?.kind === "card" ? this.board.exercises.find((x) => x.id === cur.exercise) : undefined;
+          if (cur?.kind === "card" && e) a.run(cur, e);
+        });
+      }
+      actions.querySelectorAll("button").forEach((b) => b.addEventListener("pointerdown", (e) => e.stopPropagation()));
+    }
+  }
+
+  /** Add a tool (inside a card when `card` is given) and return it. */
+  addTool(tool: ToolKind, data: Record<string, unknown>, card?: string): ToolItem {
+    this.checkpoint();
+    const host = card ? this.get(card) : undefined;
+    const spot = host ? { x: host.x, y: host.y } : this.freeSpot(420, 220);
+    const item: ToolItem = { id: this.nextId("w"), kind: "tool", x: spot.x, y: spot.y, tool, data, ...(host ? { card } : {}) };
+    this.board.items.push(item);
+    this.board.selection = [item.id];
+    this.changed();
+    const node = this.elementFor(item.id);
+    if (node) void this.reveal(this.worldRect(card ? (this.elementFor(card) ?? node) : node));
+    return item;
+  }
+
+  /** A tool mutated its `data`: save (with undo) without rebuilding its DOM. */
+  toolChanged(_item: ToolItem) {
+    this.changed();
+  }
+
+  /** Add a work line at the end of a card, prefilled with the last line (or the statement). */
+  addCardStep(cardId: string, latex?: string, edit = true): MathItem | undefined {
+    const card = this.get(cardId);
+    if (card?.kind !== "card") return;
+    const ex = this.board.exercises.find((e) => e.id === card.exercise);
+    const last = cardLines(this.board, cardId).filter((l) => l.latex.trim()).at(-1);
+    const prefill = latex ?? last?.latex ?? (ex && ex.kind !== "divide" ? ex.latex : "");
+    const line = this.addMath(card.x, card.y, prefill, { card: cardId, exercise: card.exercise }, edit);
+    const node = this.elementFor(line.id);
+    if (node) void this.reveal(this.worldRect(this.elementFor(cardId) ?? node));
+    return line;
   }
 
   /** Temporarily render an item with other LaTeX (used by presentations to mark parts). */
@@ -338,11 +521,13 @@ export class BoardView {
 
   remove(ids: string[]) {
     if (!ids.length) return;
+    const cardIds = new Set(ids.filter((id) => this.get(id)?.kind === "card"));
+    ids = [...ids, ...this.board.items.filter((i) => (i.kind === "math" || i.kind === "tool") && i.card && cardIds.has(i.card)).map((i) => i.id)];
     this.checkpoint();
     if (this.editing && ids.includes(this.editing.id)) this.editing = null;
     this.board.items = this.board.items.filter((i) => !ids.includes(i.id));
     this.board.selection = this.board.selection.filter((i) => !ids.includes(i));
-    const used = new Set(this.board.items.map((i) => (i.kind === "math" ? i.exercise : undefined)));
+    const used = new Set(this.board.items.map((i) => (i.kind === "math" || i.kind === "card" ? i.exercise : undefined)));
     this.board.exercises = this.board.exercises.filter((e) => used.has(e.id));
     this.changed();
   }
@@ -358,10 +543,11 @@ export class BoardView {
     this.changed();
   }
 
-  addMath(x: number, y: number, latex = "", extra: Partial<MathItem> = {}, edit = true): MathItem {
+  addMath(x: number, y: number, latex = "", extra: Partial<MathItem> = {}, edit = true, index?: number): MathItem {
     this.checkpoint();
     const item: MathItem = { id: this.nextId("m"), kind: "math", x, y, latex, ...extra };
-    this.board.items.push(item);
+    if (index === undefined) this.board.items.push(item);
+    else this.board.items.splice(index, 0, item);
     this.board.selection = [item.id];
     this.changed();
     if (edit) this.startEdit(item.id);
@@ -428,20 +614,18 @@ export class BoardView {
     return { x: Math.round(p.x), y: Math.round(p.y) };
   }
 
-  addExercise(ex: Exercise) {
-    const spot = this.freeSpot(460, 190);
+  /** Put an exercise on the board as a card: fixed statement on top, work lines inside. */
+  addExercise(ex: Exercise): MathItem | undefined {
+    const spot = this.freeSpot(480, 220);
     this.checkpoint();
     this.board.exercises.push(ex);
-    const textId = this.nextId("t");
-    this.board.items.push({ id: textId, kind: "text", x: spot.x, y: spot.y, text: `${ex.prompt}:`, color: "yellow" });
-    const headId = this.nextId("m");
-    this.board.items.push({ id: headId, kind: "math", x: spot.x, y: spot.y + 48, latex: ex.latex, chain: headId, exercise: ex.id });
+    const card: CardItem = { id: this.nextId("c"), kind: "card", x: spot.x, y: spot.y, exercise: ex.id };
+    this.board.items.push(card);
+    this.board.selection = [card.id];
     this.changed();
-    const headEl = this.elementFor(headId)!;
-    const r = this.worldRect(headEl);
-    const step = this.addMath(spot.x, r.y + r.h + 14, ex.kind === "divide" ? "" : ex.latex, { chain: headId, exercise: ex.id });
-    void this.reveal({ x: spot.x, y: spot.y, w: 500, h: 220 });
-    return step;
+    void this.reveal({ x: spot.x, y: spot.y, w: 520, h: 260 });
+    if (ex.kind === "divide") return;
+    return this.addCardStep(card.id);
   }
 
   plotSelection() {
@@ -490,15 +674,16 @@ export class BoardView {
     const node = this.elementFor(id);
     if (!item || !node || this.locked) return;
     if (this.editing?.id === id) return;
+    if (item.kind === "card" || item.kind === "plot") return;
     this.commitEdit();
     const content = node.querySelector<HTMLElement>(".content")!;
-    node.querySelector(".badge")?.remove();
+    node.querySelector(":scope > .badge")?.remove();
     node.classList.add("editing");
     content.textContent = "";
 
     if (item.kind === "math") {
       const head = this.chainOf(item)[0];
-      if (item.exercise && head?.id === item.id) {
+      if (item.exercise && !item.card && head?.id === item.id) {
         node.classList.remove("editing");
         this.renderItem(item);
         return toast("Ese es el enunciado; trabajá en la línea de abajo");
@@ -583,6 +768,13 @@ export class BoardView {
     const item = this.get(ed.id) as MathItem;
     const latex = ed.field.value.trim();
     if (!latex) return this.commitEdit();
+    if (item.card) {
+      this.commitEdit();
+      const index = this.board.items.indexOf(item) + 1;
+      const next = this.addMath(item.x, item.y, latex, { card: item.card, exercise: item.exercise }, true, index);
+      void this.reveal(this.worldRect(this.elementFor(item.card) ?? this.elementFor(next.id)!));
+      return;
+    }
     if (!item.chain) item.chain = item.id;
     this.commitEdit();
     const node = this.elementFor(item.id)!;
@@ -613,17 +805,21 @@ export class BoardView {
         const id = itemEl.dataset.id!;
         const item = this.get(id)!;
         const onHandle = !!target.closest(".handle");
-        if (target.closest("math-field, textarea")) return;
+        if (target.closest("math-field, textarea, input, select, button, .card-actions")) return;
+        if (item.kind === "tool" && item.card && !onHandle) return;
         if (e.shiftKey) {
           e.preventDefault();
           const sel = this.board.selection.includes(id) ? this.board.selection.filter((s) => s !== id) : [...this.board.selection, id];
           this.commitEdit();
           return this.select(sel);
         }
-        if (onHandle || item.kind === "plot") {
+        if (onHandle || item.kind === "plot" || item.kind === "card" || item.kind === "tool") {
           e.preventDefault();
           if (!this.board.selection.includes(id)) this.select([id]);
-          const ids = this.board.selection;
+          const ids = this.board.selection.filter((i) => {
+            const it = this.get(i);
+            return !((it?.kind === "math" || it?.kind === "tool") && it.card);
+          });
           const orig = new Map(ids.map((i) => [i, { x: this.get(i)!.x, y: this.get(i)!.y }]));
           drag = { ids, start: this.toWorld(e.clientX, e.clientY), orig, moved: false };
           vp.setPointerCapture(e.pointerId);

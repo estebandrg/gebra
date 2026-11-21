@@ -1,3 +1,4 @@
+import { registerTools } from "./tools";
 // Entry point: loads the board, connects the event stream and wires toolbar, popovers and shortcuts.
 import type { Board, ServerEvent, Topic } from "../shared/types";
 import { makeExercise } from "../shared/exercises";
@@ -7,6 +8,7 @@ import { Player } from "./player";
 import { el, toast } from "./render";
 
 const board = new BoardView();
+registerTools(board);
 const player = new Player(board);
 const chat = new Chat(board, player);
 

@@ -79,7 +79,17 @@ blue = side notes. Keep captions under ~30 words. See `examples/lineal.json`.
 
 The learner can pause, step back, replay from the chat, and press **Conservar** to copy what you wrote into their board.
 
-## 4. Other commands
+## 4. Exercise cards and tools
+
+`gebra exercise` puts an **exercise card** on the board (`c1`, `c2`…): a fixed statement on top (the learner cannot edit it)
+and the learner's work lines inside (`m…`, each CAS-checked against the previous line; the first one against the statement).
+`gebra board` prints each card with its lines, verdicts, status and the expected answer (never reveal it in `tutor`).
+Target `c1` in a presentation to point at the statement; target its lines by their `m…` ids.
+
+Cards also hold interactive **tools** (`w1`, `w2`…: Ruffini table, quadratic formula, Gauss candidates) that the learner
+fills in; `gebra board` shows a one-line summary of each tool's state under its card.
+
+## 5. Other commands
 
 ```bash
 bun bin/gebra.ts exercise cuadratica 2                     # generated (temas: lineal cuadratica factorizar operaciones division)

@@ -10,6 +10,17 @@ export interface MathItem {
   chain?: string;
   /** Exercise this line belongs to (its chain solves it). */
   exercise?: string;
+  /** Exercise card that holds this line; card lines are laid out inside the card in board order. */
+  card?: string;
+}
+
+/** Exercise card: a read-only statement on top and the learner's work lines inside. */
+export interface CardItem {
+  id: string;
+  kind: "card";
+  x: number;
+  y: number;
+  exercise: string;
 }
 
 export interface TextItem {
@@ -42,7 +53,22 @@ export interface PlotItem {
   marks?: PlotMark[];
 }
 
-export type Item = MathItem | TextItem | PlotItem;
+export type ToolKind = "ruffini" | "resolvente" | "gauss";
+
+/** Interactive learning tool (Ruffini table, quadratic formula, Gauss candidates). State lives in `data`. */
+export interface ToolItem {
+  id: string;
+  kind: "tool";
+  x: number;
+  y: number;
+  tool: ToolKind;
+  /** Exercise card that holds this tool (laid out inside it in board order). */
+  card?: string;
+  /** Tool-specific, JSON-serializable state; each tool module owns its shape. */
+  data: Record<string, unknown>;
+}
+
+export type Item = MathItem | TextItem | PlotItem | CardItem | ToolItem;
 export type NewItem = Omit<MathItem, "id"> | Omit<TextItem, "id"> | Omit<PlotItem, "id">;
 
 export type ExerciseKind = "solve" | "factor" | "expand" | "divide";
