@@ -36,8 +36,15 @@ export function normalizeLatex(latex: string): string {
     .trim();
 }
 
+/** Words that stay as one token; any other run of letters is a product of variables (35xb = 35·x·b). */
+const WORDS = new Set(["sin", "sen", "cos", "tan", "cot", "sec", "csc", "log", "ln", "exp", "abs", "sqrt", "pi", "min", "max"]);
+
+function splitLetters(latex: string): string {
+  return latex.replace(/(?<![\\a-zA-Z])[a-zA-Z]{2,}(?![a-zA-Z])/g, (run) => (WORDS.has(run) ? run : [...run].join("\\cdot ")));
+}
+
 function latexToNerd(latex: string): string {
-  const src = latex.trim();
+  const src = splitLetters(latex.trim());
   if (!src) throw new Error("vacío");
   const converted = String(nd.convertFromLaTeX(src));
   if (/\b(times|div|cdot|frac|left|right)\b/.test(converted)) throw new Error(`no entendí: ${src}`);

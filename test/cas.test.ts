@@ -92,3 +92,21 @@ describe("algebra tools", () => {
     expect(checkAnswer("2x=6", ["3"])).toBe(false);
   });
 });
+
+describe("adjacent letters are a product", () => {
+  test("35xb parses as 35·x·b, two variables", () => {
+    const m = parseMath("35xb-7x");
+    expect(m.kind).toBe("expression");
+    if (m.kind === "expression") expect(m.vars).toEqual(["b", "x"]);
+  });
+  test("factorizations with several letters compare as equivalent", () => {
+    expect(compareSteps("35xb-7x", "7x(5b-1)").status).toBe("equivalent");
+    expect(compareSteps("2wx-4yw+6wxz", "2w(x-2y+3xz)").status).toBe("equivalent");
+    expect(compareSteps("35xb-7x", "7x(5b+1)").status).toBe("different");
+  });
+  test("function names and \\frac are left alone", () => {
+    expect(compareSteps("\\sin x", "\\sin x").status).not.toBe("different");
+    expect(compareSteps("\\frac{x+1}{2}", "\\frac{1}{2}x+\\frac{1}{2}").status).toBe("equivalent");
+    expect(compareSteps("\\sqrt{x}\\cdot\\sqrt{x}", "x").status).toBe("equivalent");
+  });
+});
