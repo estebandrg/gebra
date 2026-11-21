@@ -135,3 +135,19 @@ describe("agent protocol", () => {
     expect(ev.message.text).toBe("¡Muy bien!");
   });
 });
+
+describe("exercises from the agent", () => {
+  test("generated exercise is broadcast to the web", async () => {
+    const ev = await nextEvent("/api/events", (d) => d.type === "exercise", () => post("/api/exercise", { topic: "cuadratica", level: 2, seed: 7 }));
+    expect(ev.exercise.topic).toBe("cuadratica");
+    expect(ev.exercise.kind).toBe("solve");
+  });
+  test("custom exercise gets its answer from the CAS", async () => {
+    const res = await post("/api/exercise", { latex: "3x-5=10", prompt: "Resolvé" });
+    expect((await res.json()).exercise.answer).toEqual(["5"]);
+  });
+  test("invalid latex and unknown topic are rejected", async () => {
+    expect((await post("/api/exercise", { latex: "2x+=" })).status).toBe(400);
+    expect((await post("/api/exercise", { topic: "trigonometria" })).status).toBe(400);
+  });
+});

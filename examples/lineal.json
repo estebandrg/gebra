@@ -1,0 +1,48 @@
+{
+  "title": "Resolver 2x + 3 = 7",
+  "steps": [
+    {
+      "say": "Tenemos una **ecuación lineal**: queremos dejar la $x$ sola de un lado.",
+      "actions": [
+        { "type": "highlight", "target": "m1", "style": "box", "color": "yellow" }
+      ]
+    },
+    {
+      "say": "El $+3$ está sumando. Para sacarlo, **restamos 3 en ambos miembros** (la balanza queda equilibrada).",
+      "actions": [
+        { "type": "mark", "target": "m1", "latex": "2x\\htmlId{mas3}{+3}=7" },
+        { "type": "highlight", "target": "m1#mas3", "style": "circle", "color": "pink" },
+        { "type": "write", "id": "s1", "latex": "2x+3\\htmlId{a}{-3}=7\\htmlId{b}{-3}", "below": "m1", "dy": 24, "color": "yellow" },
+        { "type": "arrow", "from": "m1", "to": "s1", "label": "$-3$ a ambos lados", "color": "pink" }
+      ]
+    },
+    {
+      "say": "$+3-3$ se cancela, y $7-3=4$.",
+      "actions": [
+        { "type": "write", "id": "s2", "latex": "2x=4", "below": "s1", "color": "yellow" },
+        { "type": "highlight", "target": "s1#a", "style": "underline", "color": "green" }
+      ]
+    },
+    {
+      "say": "Ahora el $2$ está **multiplicando** a la $x$: dividimos ambos miembros por $2$.",
+      "actions": [
+        { "type": "write", "id": "s3", "latex": "\\frac{2x}{2}=\\frac{4}{2}", "below": "s2", "color": "yellow" },
+        { "type": "write", "id": "s4", "latex": "x=2", "below": "s3", "color": "green", "size": 38 },
+        { "type": "highlight", "target": "s4", "style": "box", "color": "green", "label": "¡solución!" }
+      ]
+    },
+    {
+      "say": "Gráficamente: la recta $y=2x+3$ corta a $y=7$ justo en $x=2$.",
+      "actions": [
+        { "type": "plot", "id": "graf", "exprs": ["2x+3=7"], "xRange": [-2, 5], "right": "s1" }
+      ],
+      "pause": true
+    },
+    {
+      "say": "Verificamos: $2\\cdot 2+3=7$ ✓. ¿Probás vos con $3x-5=10$?",
+      "actions": [
+        { "type": "text", "id": "n1", "text": "Verificación: $2\\cdot2+3=7$ ✓", "below": "s4", "color": "blue" }
+      ]
+    }
+  ]
+}

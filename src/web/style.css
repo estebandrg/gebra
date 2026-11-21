@@ -25,6 +25,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--panel); color: var(--ui); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
 button { font: inherit; color: inherit; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
 button:hover { border-color: #46574e; background: #222b26; }
@@ -79,7 +80,7 @@ code { font: 12px ui-monospace, monospace; color: var(--chalk-yellow); }
 .item.math .content { padding: 2px 0; }
 .item.math .content:empty::before { content: "…"; color: var(--muted); }
 .item.math.invalid .content { text-decoration: underline wavy #ff767688; text-underline-offset: 8px; }
-.item.text { font-family: var(--hand); font-size: 30px; white-space: pre-wrap; max-width: 760px; cursor: text; }
+.item.text { font-family: var(--hand); font-size: 30px; white-space: pre-wrap; width: max-content; max-width: 760px; cursor: text; }
 .item.text.c-yellow { color: var(--chalk-yellow); }
 .item.text textarea { font: inherit; color: inherit; background: transparent; border: 0; outline: none; resize: none; width: 520px; min-height: 1.4em; }
 .item.plot { padding: 6px; background: #00000022; border-color: #ffffff14; }
@@ -99,9 +100,10 @@ math-field::part(virtual-keyboard-toggle) { color: var(--muted); }
 /* ------------------------------------------------------------ presentation */
 .pres-item { position: absolute; white-space: nowrap; padding: 4px 10px; }
 .pres-item.math { font-size: 30px; }
-.pres-item.note { font-family: var(--hand); font-size: 30px; line-height: 1.15; white-space: pre-wrap; max-width: 620px; }
+.pres-item.note { font-family: var(--hand); font-size: 30px; line-height: 1.15; white-space: pre-wrap; width: max-content; max-width: 620px; }
 .pres-item .katex { font-size: 1em; }
 .pres-label { position: absolute; font-family: var(--hand); font-size: 26px; white-space: nowrap; transform: translate(-50%, -100%); padding: 0 6px; }
+.pres-label.side { transform: translate(0, -50%); }
 .chalk-cursor { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 12px 4px #ffffff88; pointer-events: none; }
 .c-white { color: var(--chalk-white); } .c-yellow { color: var(--chalk-yellow); } .c-blue { color: var(--chalk-blue); }
 .c-pink { color: var(--chalk-pink); } .c-green { color: var(--chalk-green); } .c-orange { color: var(--chalk-orange); } .c-red { color: var(--chalk-red); }

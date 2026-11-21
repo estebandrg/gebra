@@ -3,7 +3,9 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { validatePresentation } from "../shared/dsl";
-import type { Ask, AskMode, Board, ChatMessage, Presentation, ServerEvent } from "../shared/types";
+import { generateExercise } from "../shared/exercises";
+import { parseMath, solveEquation } from "../shared/cas";
+import type { Ask, AskMode, Board, ChatMessage, Exercise, Presentation, ServerEvent, Topic } from "../shared/types";
 
 export interface ServerOptions {
   port: number;
@@ -175,6 +177,35 @@ export function startServer(opts: ServerOptions) {
           const body = (await req.json()) as { text?: string };
           broadcast({ type: "status", text: String(body.text ?? "") });
           return json({ ok: true });
+        },
+      },
+
+      "/api/exercise": {
+        POST: async (req) => {
+          const body = (await req.json()) as Partial<Exercise> & { seed?: number };
+          let ex: Exercise;
+          if (body.latex) {
+            const parsed = parseMath(body.latex);
+            if (parsed.kind === "invalid" || parsed.kind === "empty") return json({ error: `latex inválido: ${body.latex}` }, 400);
+            const kind = body.kind ?? "solve";
+            let answer = body.answer;
+            if (kind === "solve" && !answer?.length) {
+              try {
+                answer = solveEquation(body.latex).solutions;
+              } catch (e) {
+                return json({ error: `no pude resolverla: ${e instanceof Error ? e.message : e}` }, 400);
+              }
+            }
+            if (!answer?.length) return json({ error: "answer es obligatorio para este tipo" }, 400);
+            ex = { id: id("ex"), topic: body.topic ?? "lineal", level: body.level ?? 1, kind, prompt: body.prompt ?? "Resolvé", latex: body.latex, answer };
+          } else {
+            const topic = (body.topic ?? "lineal") as Topic;
+            if (!["lineal", "cuadratica", "factorizar", "operaciones", "division"].includes(topic)) return json({ error: `tema desconocido: ${topic}` }, 400);
+            const level = ([1, 2, 3].includes(Number(body.level)) ? Number(body.level) : 1) as 1 | 2 | 3;
+            ex = { ...generateExercise(topic, level, body.seed), id: id("ex") };
+          }
+          broadcast({ type: "exercise", exercise: ex });
+          return json({ ok: true, exercise: ex, viewers: webClients.size });
         },
       },
 

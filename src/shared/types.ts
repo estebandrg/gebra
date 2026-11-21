@@ -147,4 +147,5 @@ export type ServerEvent =
   | { type: "presentation"; presentation: Presentation }
   | { type: "chat"; message: ChatMessage }
   | { type: "presence"; agents: number }
-  | { type: "status"; text: string };
+  | { type: "status"; text: string }
+  | { type: "exercise"; exercise: Exercise };

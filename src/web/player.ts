@@ -127,7 +127,7 @@ export class Player {
       if (node.style.opacity === "0") continue;
       const x = parseFloat(node.style.left);
       const y = parseFloat(node.style.top);
-      if (action.type === "write") items.push({ kind: "math", x, y, latex: (latex ?? action.latex).replace(/\\htmlId\{[^}]*\}/g, "") });
+      if (action.type === "write") items.push({ kind: "math", x, y, latex: (latex ?? action.latex).replace(/\\htmlId\{[^}]*\}\{([^{}]*)\}/g, "$1") });
       if (action.type === "text") items.push({ kind: "text", x, y, text: action.text, color: action.color ?? "yellow" });
       if (action.type === "plot")
         items.push({ kind: "plot", x, y, w: action.w ?? 420, h: action.h ?? 300, exprs: action.exprs, xRange: action.xRange, yRange: action.yRange, marks: action.marks });
@@ -278,7 +278,11 @@ export class Player {
       if (lowest) [x, y] = [lowest.x, lowest.y + lowest.h + 40];
       else ({ x, y } = this.board.viewCenter());
     }
-    return { x: x + (a.dx ?? 0), y: y + (a.dy ?? 0) };
+    x += a.dx ?? 0;
+    y += a.dy ?? 0;
+    if (a.at) return { x, y };
+    const mine = [...this.entries.values()].filter((e) => e.node.style.opacity !== "0").map((e) => this.board.worldRect(e.node));
+    return this.board.findFree(x, y, w, h, mine, a.right || a.left ? "right" : "down");
   }
 
   private path(d: string, stroke: string, width = 3, fill = "none") {
@@ -298,8 +302,8 @@ export class Player {
     await this.anim(p, [{ strokeDashoffset: len }, { strokeDashoffset: 0 }], base, "ease-in-out");
   }
 
-  private label(text: string, x: number, y: number, c: string) {
-    const lab = el("div", "pres-label", this.layer);
+  private label(text: string, x: number, y: number, c: string, side = false) {
+    const lab = el("div", `pres-label${side ? " side" : ""}`, this.layer);
     lab.style.left = `${x}px`;
     lab.style.top = `${y}px`;
     lab.style.color = c;
@@ -409,7 +413,7 @@ export class Player {
           const d = pts.map(([x, y], i) => `${i ? "L" : "M"}${(x! + jitter()).toFixed(1)},${(y! + jitter()).toFixed(1)}`).join("");
           await this.draw(this.path(d, c), 650);
         }
-        if (a.label) await this.label(a.label, r.x + r.w / 2, r.y - 4, c);
+        if (a.label) await this.label(a.label, r.x + r.w + 12, r.y + r.h / 2, c, true);
         return;
       }
 

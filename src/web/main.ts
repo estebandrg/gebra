@@ -33,6 +33,7 @@ function connect() {
     if (ev.type === "chat") chat.add(ev.message);
     if (ev.type === "presence") chat.setPresence(ev.agents);
     if (ev.type === "status") chat.setTyping(ev.text || null);
+    if (ev.type === "exercise") board.addExercise(ev.exercise);
   };
   es.onerror = () => chat.setPresence(0);
 }

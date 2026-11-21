@@ -397,19 +397,39 @@ export class BoardView {
     this.changed();
   }
 
-  /** Place a position below everything currently near the view, for new content. */
-  freeSpot(): { x: number; y: number } {
+  /** World rects of every rendered board item (badges excluded). */
+  obstacles(): { x: number; y: number; w: number; h: number }[] {
+    return [...this.elements.values()].map((n) => this.worldRect(n));
+  }
+
+  /** First non-overlapping spot for a w×h box starting at (x, y), moving down (or right). */
+  findFree(x: number, y: number, w: number, h: number, extra: { x: number; y: number; w: number; h: number }[] = [], dir: "down" | "right" = "down") {
+    const obs = [...this.obstacles(), ...extra];
+    const gap = 14;
+    for (let i = 0; i < 60; i++) {
+      const hit = obs.find((r) => x < r.x + r.w + gap && x + w + gap > r.x && y < r.y + r.h + gap && y + h + gap > r.y);
+      if (!hit) break;
+      if (dir === "right") x = hit.x + hit.w + gap * 2;
+      else y = hit.y + hit.h + gap;
+    }
+    return { x, y };
+  }
+
+  /** Place new content below the selection (or near the view center) without covering anything. */
+  freeSpot(w = 360, h = 60): { x: number; y: number } {
     const sel = this.board.selection.map((id) => this.get(id)).filter(Boolean) as Item[];
     const anchor = sel.at(-1);
+    let start = this.viewCenter();
     if (anchor) {
       const r = this.elementFor(anchor.id) ? this.worldRect(this.elementFor(anchor.id)!) : { x: anchor.x, y: anchor.y, w: 0, h: 50 };
-      return { x: anchor.x, y: r.y + r.h + 40 };
+      start = { x: anchor.x, y: r.y + r.h + 40 };
     }
-    return this.viewCenter();
+    const p = this.findFree(start.x, start.y, w, h);
+    return { x: Math.round(p.x), y: Math.round(p.y) };
   }
 
   addExercise(ex: Exercise) {
-    const spot = this.freeSpot();
+    const spot = this.freeSpot(460, 190);
     this.checkpoint();
     this.board.exercises.push(ex);
     const textId = this.nextId("t");
@@ -455,7 +475,8 @@ export class BoardView {
       return Math.max(acc, r.x + r.w);
     }, -Infinity);
     const top = Math.min(...sources.map((s) => s.y));
-    this.addPlot({ x: rightmost + 120, y: top, w: 440, h: 320, exprs, xRange });
+    const spot = this.findFree(rightmost + 120, top, 460, 340, [], "right");
+    this.addPlot({ x: Math.round(spot.x), y: Math.round(spot.y), w: 440, h: 320, exprs, xRange });
   }
 
   // ------------------------------------------------------------ editing
@@ -483,12 +504,15 @@ export class BoardView {
         return toast("Ese es el enunciado; trabajá en la línea de abajo");
       }
       const mf = new MathfieldElement();
-      mf.value = item.latex;
+      content.appendChild(mf);
       mf.smartFence = true;
       mf.mathVirtualKeyboardPolicy = "manual";
-      mf.menuItems = [];
-      mf.placeholder = "\\text{escribí acá…}";
-      content.appendChild(mf);
+      mf.value = item.latex;
+      try {
+        mf.menuItems = [];
+      } catch {
+        /* older MathLive: menu stays */
+      }
       this.editing = { id, field: mf };
       mf.addEventListener(
         "keydown",

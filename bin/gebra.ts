@@ -14,6 +14,10 @@ const HELP = `gebra — conexión del profe con la pizarra (${BASE})
   gebra watch                 Escucha preguntas de la web; imprime una línea por pregunta (para monitor)
   gebra present <file|->      Envía una presentación en vivo (JSON del DSL; ver AGENTS.md)
   gebra say <texto...>        Manda un mensaje al chat de la web ($...$ = matemática)
+  gebra exercise <tema> [nivel]                 Pone un ejercicio generado en la pizarra
+        temas: lineal | cuadratica | factorizar | operaciones | division · nivel 1-3
+  gebra exercise --latex <ec> [--prompt <txt>] [--kind solve|factor|expand] [--answer a,b]
+                              Pone un ejercicio propio (solve: la respuesta la calcula el CAS)
   gebra status [texto]        Muestra "el profe está…" en la web (sin texto lo borra)
   gebra chat [n]              Últimos n mensajes del chat (por defecto 10)
   gebra cas <op> <args...>    Álgebra simbólica (entrada y salida en LaTeX):
@@ -223,6 +227,18 @@ async function main(argv: string[]) {
       if (!text.trim()) fail("uso: gebra say <texto>");
       const r = await postJson("/api/say", { text });
       return console.log(`mensaje enviado (${r.viewers} pestaña(s) mirando)`);
+    }
+    case "exercise": {
+      const flag = (name: string) => {
+        const i = rest.indexOf(`--${name}`);
+        return i >= 0 ? rest[i + 1] : undefined;
+      };
+      const latex = flag("latex");
+      const body = latex
+        ? { latex, prompt: flag("prompt"), kind: flag("kind"), answer: flag("answer")?.split(",") }
+        : { topic: rest[0] ?? "lineal", level: Number(rest[1] ?? 1) };
+      const r = await postJson("/api/exercise", body);
+      return console.log(`ejercicio ${r.exercise.id}: ${r.exercise.prompt}: ${r.exercise.latex}  (respuesta: ${r.exercise.answer.join(", ")}) → ${r.viewers} pestaña(s)`);
     }
     case "status": {
       await postJson("/api/status", { text: rest.join(" ") });
