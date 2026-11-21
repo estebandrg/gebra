@@ -43,6 +43,7 @@ export interface PlotItem {
 }
 
 export type Item = MathItem | TextItem | PlotItem;
+export type NewItem = Omit<MathItem, "id"> | Omit<TextItem, "id"> | Omit<PlotItem, "id">;
 
 export type ExerciseKind = "solve" | "factor" | "expand" | "divide";
 export type Topic = "lineal" | "cuadratica" | "factorizar" | "operaciones" | "division";
@@ -146,4 +147,4 @@ export type ServerEvent =
   | { type: "presentation"; presentation: Presentation }
   | { type: "chat"; message: ChatMessage }
   | { type: "presence"; agents: number }
-  | { type: "board"; board: Board; source: string };
+  | { type: "status"; text: string };

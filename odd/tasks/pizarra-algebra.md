@@ -16,8 +16,8 @@ server: it reads the board, verifies with a CAS, and plays live presentations on
 
 ## Tasks
 
-- T1 S2 — scaffold, Bun server, agent protocol (board/inbox/present/say/watch) + CLI — inline — commit: pending
-- T2 S6 — CAS module (equivalence, solve, factor, expand, check) + CLI cas — inline — commit: pending
+- T1 S2 — scaffold, Bun server, agent protocol (board/inbox/present/say/watch) + CLI — inline — commit: 179d345
+- T2 S6 — CAS module (equivalence, solve, factor, expand, check) + CLI cas — inline — commit: 179d345
 - T3 S1 S6 — board UI: pan/zoom canvas, MathLive keyboard input, items, step chains with CAS checks, persistence — inline — commit: pending
 - T4 S3 S7 — presentation player: DSL, chalk write/highlight/arrow/strike/note/box/plot, captions, controls; graphs — inline — commit: pending
 - T5 S4 S5 — chat panel, tutor mode, quick actions, exercise generator — inline — commit: pending

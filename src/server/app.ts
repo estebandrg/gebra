@@ -170,6 +170,14 @@ export function startServer(opts: ServerOptions) {
         },
       },
 
+      "/api/status": {
+        POST: async (req) => {
+          const body = (await req.json()) as { text?: string };
+          broadcast({ type: "status", text: String(body.text ?? "") });
+          return json({ ok: true });
+        },
+      },
+
       "/api/say": {
         POST: async (req) => {
           const body = (await req.json()) as { text?: string };

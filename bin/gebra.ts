@@ -14,6 +14,7 @@ const HELP = `gebra — conexión del profe con la pizarra (${BASE})
   gebra watch                 Escucha preguntas de la web; imprime una línea por pregunta (para monitor)
   gebra present <file|->      Envía una presentación en vivo (JSON del DSL; ver AGENTS.md)
   gebra say <texto...>        Manda un mensaje al chat de la web ($...$ = matemática)
+  gebra status [texto]        Muestra "el profe está…" en la web (sin texto lo borra)
   gebra chat [n]              Últimos n mensajes del chat (por defecto 10)
   gebra cas <op> <args...>    Álgebra simbólica (entrada y salida en LaTeX):
       solve <ec> [var]        check <paso1> <paso2>     factor <expr>     expand <expr>
@@ -222,6 +223,10 @@ async function main(argv: string[]) {
       if (!text.trim()) fail("uso: gebra say <texto>");
       const r = await postJson("/api/say", { text });
       return console.log(`mensaje enviado (${r.viewers} pestaña(s) mirando)`);
+    }
+    case "status": {
+      await postJson("/api/status", { text: rest.join(" ") });
+      return console.log(rest.length ? "estado mostrado" : "estado borrado");
     }
     case "chat": {
       const n = Number(rest[0] ?? 10);
