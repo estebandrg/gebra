@@ -256,10 +256,31 @@ function factorCount(latex: string): number {
   return count;
 }
 
+/** Final answers of an equation with no solution or with infinitely many: `answer` is ["none"] or ["all"]. */
+const NONE_WORDS = /sin\s*soluci|ninguna|no\s*tiene|\\emptyset|\\varnothing|\\nexists|\{\s*\}/i;
+const ALL_WORDS = /infinit|todos|cualquier|\\mathbb\{R\}|\\R\b|\\forall/i;
+
+/** Does this line state the special final answer (a numeric contradiction/identity, `x=x`, or the words)? */
+function statesSpecialAnswer(want: "none" | "all", latex: string): boolean {
+  if ((want === "none" ? NONE_WORDS : ALL_WORDS).test(latex)) return true;
+  const p = parseMath(latex);
+  if (p.kind !== "equation") return false;
+  if (p.vars.length === 0) return (compareSteps(`${p.lhs}-(${p.rhs})`, "0").status === "equivalent") === (want === "all");
+  return want === "all" && p.lhs === p.rhs;
+}
+
 export function checkExerciseStep(ex: Exercise, latex: string): { status: ProgressStatus; reason: string } {
   if (!latex.trim()) return { status: "unknown", reason: "" };
   switch (ex.kind) {
     case "solve": {
+      const special = ex.answer.length === 1 && (ex.answer[0] === "none" || ex.answer[0] === "all") ? (ex.answer[0] as "none" | "all") : null;
+      if (special) {
+        if (statesSpecialAnswer(special, latex)) return { status: "solved", reason: "¡Resuelto!" };
+        const cmp = compareSteps(ex.latex, latex);
+        if (cmp.status === "equivalent") return { status: "progress", reason: "Vas bien, seguí simplificando" };
+        if (cmp.status === "different") return { status: "wrong", reason: cmp.reason };
+        return { status: "unknown", reason: cmp.reason };
+      }
       if (checkAnswer(latex, ex.answer)) return { status: "solved", reason: "¡Resuelto!" };
       const cmp = compareSteps(ex.latex, latex);
       if (cmp.status === "equivalent") return { status: "progress", reason: "Vas bien, seguí despejando" };
@@ -297,6 +318,8 @@ export function checkExerciseStep(ex: Exercise, latex: string): { status: Progre
 }
 
 export function exerciseAnswerTeX(ex: Exercise): string {
+  if (ex.kind === "solve" && ex.answer[0] === "none") return "\\text{sin solución}";
+  if (ex.kind === "solve" && ex.answer[0] === "all") return "\\text{infinitas soluciones}";
   if (ex.kind === "solve") return ex.answer.map((a) => `x=${toTeX(a)}`).join(",\\ ");
   if (ex.kind === "divide") return `C=${ex.answer[0]},\\ R=${ex.answer[1]}`;
   return ex.answer[0]!;

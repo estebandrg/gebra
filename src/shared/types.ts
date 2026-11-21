@@ -84,7 +84,7 @@ export interface Exercise {
   kind: ExerciseKind;
   prompt: string;
   latex: string;
-  /** solve: solution values; factor/expand: expected latex; divide: [quotient, remainder]. */
+  /** solve: solution values, or ["none"] (no solution) / ["all"] (infinitely many); factor/expand: expected latex; divide: [quotient, remainder]. */
   answer: string[];
   solved?: boolean;
 }

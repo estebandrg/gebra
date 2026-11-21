@@ -156,6 +156,11 @@ describe("exercises from the agent", () => {
     const res = await post("/api/exercise", { latex: "3x-5=10", prompt: "Resolvé" });
     expect((await res.json()).exercise.answer).toEqual(["5"]);
   });
+  test("custom exercise with no solution or infinite solutions keeps a word answer", async () => {
+    const answer = async (latex: string) => (await (await post("/api/exercise", { latex })).json()).exercise.answer;
+    expect(await answer("2x+1=2x+5")).toEqual(["none"]);
+    expect(await answer("2(x+1)=2x+2")).toEqual(["all"]);
+  });
   test("custom exercise infers its topic unless one is given", async () => {
     const topic = async (body: object) => (await (await post("/api/exercise", body)).json()).exercise.topic;
     expect(await topic({ latex: "3x-5=10" })).toBe("lineal");

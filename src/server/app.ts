@@ -214,7 +214,8 @@ export function startServer(opts: ServerOptions) {
             let answer = body.answer;
             if (kind === "solve" && !answer?.length) {
               try {
-                answer = solveEquation(body.latex).solutions;
+                const sol = solveEquation(body.latex);
+                answer = sol.all ? ["all"] : sol.solutions.length ? sol.solutions : ["none"];
               } catch (e) {
                 return json({ error: `no pude resolverla: ${e instanceof Error ? e.message : e}` }, 400);
               }

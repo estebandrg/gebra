@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { generateExercise, checkExerciseStep } from "../src/shared/exercises";
+import { generateExercise, checkExerciseStep, exerciseAnswerTeX } from "../src/shared/exercises";
 import { compareSteps, parseMath, solveEquation } from "../src/shared/cas";
 import type { Exercise, Topic } from "../src/shared/types";
 
@@ -51,5 +51,24 @@ describe("checkExerciseStep", () => {
     const ex = { id: "e", topic: "operaciones", level: 1, kind: "expand", prompt: "", latex: "(x+1)(x+2)", answer: ["x^2+3x+2"] } satisfies Exercise;
     expect(checkExerciseStep(ex, "x^2+2x+x+2").status).toBe("progress");
     expect(checkExerciseStep(ex, "x^2+3x+2").status).toBe("solved");
+  });
+});
+
+describe("exercises without a single solution", () => {
+  const none: Exercise = { id: "n", topic: "lineal", level: 1, kind: "solve", prompt: "Resolvé", latex: "-2\\left(0.2x-0.6\\right)\\left(-0.5\\right)-1=\\frac{x-3}{5}", answer: ["none"] };
+  const all: Exercise = { id: "a", topic: "lineal", level: 1, kind: "solve", prompt: "Resolvé", latex: "4x-7=\\frac{0.5x-\\frac{7}{8}}{0.125}", answer: ["all"] };
+  test("no solution: a false numeric line or the words solve it", () => {
+    for (const line of ["0=5", "-1.6=-0.6", "\\text{sin solución}", "S=\\varnothing", "\\emptyset"]) expect(checkExerciseStep(none, line).status).toBe("solved");
+    expect(checkExerciseStep(none, "0.2x-1.6=0.2x-0.6").status).toBe("progress");
+    expect(checkExerciseStep(none, "x=3").status).toBe("wrong");
+  });
+  test("infinite solutions: a true numeric line or the words solve it", () => {
+    for (const line of ["0=0", "-7=-7", "\\text{infinitas soluciones}", "S=\\mathbb{R}", "x=x", "4x-7=4x-7"]) expect(checkExerciseStep(all, line).status).toBe("solved");
+    expect(checkExerciseStep(all, "4x-7=\\frac{0.5x-0.875}{0.125}").status).toBe("progress");
+    expect(checkExerciseStep(all, "0=5").status).toBe("wrong");
+  });
+  test("the expected answer reads as words", () => {
+    expect(exerciseAnswerTeX(none)).toBe("\\text{sin solución}");
+    expect(exerciseAnswerTeX(all)).toBe("\\text{infinitas soluciones}");
   });
 });
