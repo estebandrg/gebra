@@ -17,7 +17,7 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 ## Tasks
 
 - T1 S1 — exercise card item: model, render, drag as a unit, read-only statement, steps inside with CAS ✓/✗, solved state, CLI board view, agent docs — inline — commit: 4ff19d6
-- T2 S2 S6 — guided Ruffini table widget (pure logic + UI), from division cards and from a selected polynomial; result goes into the card — inline — commit: pending
+- T2 S2 S6 — guided Ruffini table widget (pure logic + UI), from division cards and from a selected polynomial; result goes into the card — inline — commit: 0b6cb31
 - T3 S3 — guided quadratic-formula widget — inline — commit: pending
 - T4 S4 — Gauss candidates widget, hands a root to Ruffini — inline — commit: pending
 - T5 S5 — theory/formulas side panel, insert into board — inline — commit: pending
@@ -35,3 +35,4 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 - L6 (evidence): all three workers (T2+T4, T3, T5) failed with provider quota; not retried — continuing inline.
 - L7 (user, verbatim): "Otra cosita, cambia el nombre de card profe por Asistente, y que ponga que modelo de IA esta respondiendo. y hace las cards en pizarra resizables tambien."
 - L8 (evidence T7/T8): isolated server 5191 + headless Firefox: `gebra watch --model "Claude Opus 5.5"` → chat header "Asistente" with model pill "Claude Opus 5.5" and "conectado"; card resized 440×218 → 628×346 by the corner grip and persisted (w=628, h=346); double-click on the grip resets. Also fixed: custom `--latex` exercises were always topic "lineal" (now inferred: cuadratica/factorizar/operaciones/division). Note: `bun --hot` reloads drop agent presence until `gebra watch` reconnects. 66 tests + tsc green.
+- L9 (evidence T2): headless Firefox on isolated server: division card → "Ruffini" → typed 1, -7 (hint "Falta el término de x²: completá con 0."), then 0 -7 6 -2 1 -2 -2 4 -3 6 12 → "C(x)=x²−2x−3  R=12"; "Escribir el resultado en la tarjeta" → card solved; CLI shows "[w1] Ruffini: … completo". Workers unavailable; inline. 83 tests + tsc green.
