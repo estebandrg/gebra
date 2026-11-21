@@ -179,8 +179,10 @@ body.chat-hidden .stage { right: 20px; }
 body.chat-hidden .chat { display: none; }
 .chat-head { padding: 14px 14px 12px; border-bottom: 1px solid var(--line-soft); display: grid; gap: 12px; }
 .chat-id { display: flex; align-items: center; gap: 10px; }
-.avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 700 22px var(--hand); color: var(--crust); background: linear-gradient(135deg, var(--peach), var(--pink)); position: relative; flex: none; }
-.chat-id > div { display: grid; line-height: 1.2; }
+.avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--crust); background: linear-gradient(135deg, var(--mauve), var(--blue)); position: relative; flex: none; }
+.chat-id > div { display: grid; line-height: 1.2; justify-items: start; }
+.avatar svg { width: 20px; height: 20px; fill: var(--crust); stroke: none; }
+.model { font: 600 10.5px var(--mono); color: var(--lavender); background: #b7bdf81a; border: 1px solid #b7bdf833; padding: 1px 7px; border-radius: 999px; margin: 3px 0 2px; }
 .chat-head strong { font-family: var(--hand); font-size: 25px; color: var(--text); font-weight: 700; }
 .presence { font-size: 12px; color: var(--overlay1); }
 .presence.on { color: var(--green); }
@@ -279,6 +281,15 @@ body.chat-hidden .chat { display: none; }
 .card-btn.primary { background: #c6a0f622; color: var(--mauve); border: 1px solid #c6a0f644; }
 .card-btn.primary:hover { background: #c6a0f633; }
 .card-btn svg { width: 14px; height: 14px; }
+
+.item.card { display: flex; flex-direction: column; }
+.item.card.sized { max-width: none; min-width: 360px; }
+.item.card.sized .card-body { flex: 1; overflow: auto; align-content: start; }
+.item.card.sized .card-head .content { overflow-x: auto; }
+.resize { position: absolute; right: 3px; bottom: 3px; width: 16px; height: 16px; cursor: nwse-resize; border-radius: 0 0 14px 0; opacity: 0; transition: opacity .15s;
+  background: linear-gradient(135deg, transparent 50%, var(--overlay0) 50%, var(--overlay0) 58%, transparent 58%, transparent 70%, var(--overlay0) 70%, var(--overlay0) 78%, transparent 78%); }
+.item.card:hover > .resize, .item.card.selected > .resize, .item.card.sized > .resize { opacity: 1; }
+.resize:hover { filter: brightness(1.6); }
 
 /* ------------------------------------------------------------ tools (Ruffini, resolvente, Gauss) */
 .item.tool { padding: 10px 14px 12px; white-space: normal; background: var(--base); border: 1px solid var(--line); border-radius: 14px; cursor: default; }

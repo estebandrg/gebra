@@ -21,6 +21,9 @@ export interface CardItem {
   x: number;
   y: number;
   exercise: string;
+  /** Size set by the learner with the resize grip (world px); content size when absent. */
+  w?: number;
+  h?: number;
 }
 
 export interface TextItem {
@@ -172,6 +175,6 @@ export interface Presentation {
 export type ServerEvent =
   | { type: "presentation"; presentation: Presentation }
   | { type: "chat"; message: ChatMessage }
-  | { type: "presence"; agents: number }
+  | { type: "presence"; agents: number; /** AI model the connected agent declared, if any. */ model?: string }
   | { type: "status"; text: string }
   | { type: "exercise"; exercise: Exercise };

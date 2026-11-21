@@ -28,8 +28,8 @@
           <button data-tool="help" class="icon" title="Atajos (?)" aria-label="Atajos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.5" r=".6" fill="currentColor"/></svg></button>
         </div>
       </nav>
-      <button class="chat-toggle" id="chat-toggle" title="Mostrar/ocultar al profe">
-        <span class="dot" id="presence-dot"></span> Profe
+      <button class="chat-toggle" id="chat-toggle" title="Mostrar/ocultar al asistente">
+        <span class="dot" id="presence-dot"></span> Asistente
       </button>
     </header>
 
@@ -44,15 +44,15 @@
           <h2>Tu pizarra de álgebra</h2>
           <p><kbd>doble clic</kbd> en cualquier lugar para escribir una ecuación.</p>
           <p><kbd>Enter</kbd> crea el siguiente paso debajo; verifico cada paso con el CAS.</p>
-          <p><kbd>E</kbd> genera un ejercicio · <kbd>G</kbd> grafica · preguntale al profe a la derecha →</p>
+          <p><kbd>E</kbd> genera un ejercicio · <kbd>G</kbd> grafica · preguntale al asistente a la derecha →</p>
         </div></div>
       </section>
 
       <aside class="chat" id="chat">
         <div class="chat-head">
           <div class="chat-id">
-            <span class="avatar">P</span>
-            <div><strong>Profe</strong><span class="presence" id="presence-text">desconectado</span></div>
+            <span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg></span>
+            <div><strong>Asistente</strong><span class="model" id="presence-model" hidden></span><span class="presence" id="presence-text">desconectado</span></div>
           </div>
           <div class="modes" id="modes">
             <button data-mode="explain" class="active" title="Presentación completa en la pizarra">Explicame</button>
@@ -62,7 +62,7 @@
           </div>
         </div>
         <div class="messages" id="messages"></div>
-        <div class="typing" id="typing" hidden><span></span><span></span><span></span> <em id="typing-text">el profe está pensando…</em></div>
+        <div class="typing" id="typing" hidden><span></span><span></span><span></span> <em id="typing-text">el asistente está pensando…</em></div>
         <div class="chips" id="chips"></div>
         <form class="composer" id="composer">
           <div class="focus-line" id="focus-line"></div>
@@ -86,7 +86,7 @@
           <option value="1.5">1.5×</option>
           <option value="2">2×</option>
         </select>
-        <button data-ctl="keep" title="Pasar lo escrito por el profe a tu pizarra">Conservar</button>
+        <button data-ctl="keep" title="Pasar lo escrito por el asistente a tu pizarra">Conservar</button>
         <button data-ctl="close" title="Cerrar presentación (Esc)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
       <div class="progress"><div id="progress-bar"></div></div>

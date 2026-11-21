@@ -16,10 +16,11 @@ bun bin/gebra.ts board          # what is on the board right now
 Then listen for questions with the **monitor** tool (each question wakes you as an event):
 
 ```
-monitor  command: "bun bin/gebra.ts watch"   timeout_seconds: 1800   label: "gebra: preguntas"
+monitor  command: "bun bin/gebra.ts watch --model '<your model name>'"   timeout_seconds: 1800   label: "gebra: preguntas"
 ```
 
-The web shows "Profe conectado" while `watch` runs. Relaunch the monitor when it expires if the learner is still working.
+The web shows "Asistente · conectado" while `watch` runs, with the model you declared with `--model` (e.g.
+`--model "Claude Opus 5.5"`; or set `GEBRA_MODEL`) so the learner knows which AI is answering. Relaunch the monitor when it expires if the learner is still working.
 Each event line looks like `ASK q123 mode=tutor focus=m3,m4 :: ¿por qué paso restando?`.
 
 ## 2. Answer a question

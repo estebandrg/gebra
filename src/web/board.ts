@@ -407,11 +407,16 @@ export class BoardView {
     const foot = el("div", "card-foot", node);
     el("div", "card-status", foot);
     el("div", "card-actions", foot);
+    const grip = el("div", "resize", node);
+    grip.title = "Arrastrá para cambiar el tamaño · doble clic: tamaño automático";
     node.title = "";
     node.dataset.cardId = card.id;
   }
 
   private renderCard(card: CardItem, node: HTMLElement, content: HTMLElement) {
+    node.style.width = card.w ? `${card.w}px` : "";
+    node.style.height = card.h ? `${card.h}px` : "";
+    node.classList.toggle("sized", !!(card.w || card.h));
     const ex = this.board.exercises.find((e) => e.id === card.exercise);
     node.querySelector<HTMLElement>(".card-prompt")!.textContent = ex ? `${ex.prompt}` : "Ejercicio";
     node.querySelector<HTMLElement>(".card-meta")!.textContent = ex ? `${TOPIC_LABEL[ex.topic] ?? ex.topic} · nivel ${ex.level}` : "";
@@ -796,6 +801,7 @@ export class BoardView {
     const vp = this.viewport;
     let pan: { x: number; y: number; vx: number; vy: number; moved: boolean } | null = null;
     let drag: { ids: string[]; start: { x: number; y: number }; orig: Map<string, { x: number; y: number }>; moved: boolean } | null = null;
+    let resize: { id: string; start: { x: number; y: number }; w: number; h: number; moved: boolean } | null = null;
 
     vp.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 && e.button !== 1) return;
@@ -805,6 +811,13 @@ export class BoardView {
         const id = itemEl.dataset.id!;
         const item = this.get(id)!;
         const onHandle = !!target.closest(".handle");
+        if (target.closest(".resize") && item.kind === "card") {
+          e.preventDefault();
+          const r = this.worldRect(itemEl);
+          resize = { id, start: this.toWorld(e.clientX, e.clientY), w: r.w, h: r.h, moved: false };
+          vp.setPointerCapture(e.pointerId);
+          return;
+        }
         if (target.closest("math-field, textarea, input, select, button, .card-actions")) return;
         if (item.kind === "tool" && item.card && !onHandle) return;
         if (e.shiftKey) {
@@ -836,7 +849,21 @@ export class BoardView {
     });
 
     vp.addEventListener("pointermove", (e) => {
-      if (drag) {
+      if (resize) {
+        const p = this.toWorld(e.clientX, e.clientY);
+        const card = this.get(resize.id);
+        if (card?.kind !== "card") return;
+        if (!resize.moved) {
+          resize.moved = true;
+          this.checkpoint();
+        }
+        card.w = Math.round(Math.max(360, resize.w + p.x - resize.start.x));
+        card.h = Math.round(Math.max(170, resize.h + p.y - resize.start.y));
+        const node = this.elementFor(card.id)!;
+        node.style.width = `${card.w}px`;
+        node.style.height = `${card.h}px`;
+        node.classList.add("sized");
+      } else if (drag) {
         const p = this.toWorld(e.clientX, e.clientY);
         const dx = p.x - drag.start.x;
         const dy = p.y - drag.start.y;
@@ -868,6 +895,10 @@ export class BoardView {
     });
 
     const end = () => {
+      if (resize) {
+        if (resize.moved) this.changed();
+        resize = null;
+      }
       if (drag) {
         if (drag.moved) this.changed();
         drag = null;
@@ -885,6 +916,15 @@ export class BoardView {
     vp.addEventListener("pointercancel", end);
 
     vp.addEventListener("dblclick", (e) => {
+      const grip = (e.target as HTMLElement).closest(".resize");
+      const cardEl = grip?.closest<HTMLElement>(".item.card");
+      const card = cardEl ? this.get(cardEl.dataset.id!) : undefined;
+      if (card?.kind === "card") {
+        this.checkpoint();
+        delete card.w;
+        delete card.h;
+        return this.changed();
+      }
       if ((e.target as HTMLElement).closest(".item") || this.locked) return;
       const p = this.toWorld(e.clientX, e.clientY);
       this.addMath(Math.round(p.x), Math.round(p.y - 24));

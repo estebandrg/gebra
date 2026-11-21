@@ -13,7 +13,8 @@ const BASE = process.env.GEBRA_URL ?? "http://localhost:5179";
 const HELP = `gebra — conexión del profe con la pizarra (${BASE})
 
   gebra board [--json]        Muestra la pizarra: ítems, posiciones, cadenas de pasos con verificación CAS y ejercicios
-  gebra watch                 Escucha preguntas de la web; imprime una línea por pregunta (para monitor)
+  gebra watch [--model <m>]   Escucha preguntas de la web; imprime una línea por pregunta (para monitor).
+                              --model (o GEBRA_MODEL) muestra en la web qué modelo de IA responde
   gebra present <file|->      Envía una presentación en vivo (JSON del DSL; ver AGENTS.md)
   gebra say <texto...>        Manda un mensaje al chat de la web ($...$ = matemática)
   gebra exercise <tema> [nivel]                 Pone un ejercicio generado en la pizarra
@@ -136,11 +137,11 @@ export function renderBoard(board: Board): string {
 
 // ---------------------------------------------------------------- watch
 
-async function watch() {
-  console.log(`[gebra] escuchando preguntas en ${BASE} …`);
+async function watch(model = process.env.GEBRA_MODEL ?? "") {
+  console.log(`[gebra] escuchando preguntas en ${BASE}${model ? ` como ${model}` : ""} …`);
   for (;;) {
     try {
-      const res = await fetch(BASE + "/api/agent/stream");
+      const res = await fetch(BASE + "/api/agent/stream" + (model ? `?model=${encodeURIComponent(model)}` : ""));
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
       const dec = new TextDecoder();
@@ -231,8 +232,10 @@ async function main(argv: string[]) {
       const board = await api<Board>("/api/board");
       return console.log(rest.includes("--json") ? JSON.stringify(board, null, 2) : renderBoard(board));
     }
-    case "watch":
-      return watch();
+    case "watch": {
+      const i = rest.indexOf("--model");
+      return watch(i >= 0 ? (rest[i + 1] ?? "") : undefined);
+    }
     case "present": {
       const src = rest[0];
       if (!src) fail("uso: gebra present <file|->");

@@ -101,6 +101,16 @@ describe("agent protocol", () => {
     expect(ev.agents).toBeGreaterThanOrEqual(1);
   });
 
+  test("presence reports the model the agent declared", async () => {
+    const ev = await nextEvent("/api/events", (d) => d.type === "presence" && d.model === "Claude Opus 5.5", async () => {
+      const ctrl = new AbortController();
+      fetch(base + "/api/agent/stream?model=" + encodeURIComponent("Claude Opus 5.5"), { signal: ctrl.signal }).catch(() => {});
+      setTimeout(() => ctrl.abort(), 500);
+    });
+    expect(ev.agents).toBeGreaterThanOrEqual(1);
+    expect(ev.model).toBe("Claude Opus 5.5");
+  });
+
   test("invalid presentation is rejected with errors and not broadcast", async () => {
     const res = await post("/api/present", { title: "x", steps: [{ say: "a", actions: [{ type: "highlight", target: "zzz" }] }] });
     expect(res.status).toBe(400);
@@ -146,7 +156,16 @@ describe("exercises from the agent", () => {
     const res = await post("/api/exercise", { latex: "3x-5=10", prompt: "Resolvé" });
     expect((await res.json()).exercise.answer).toEqual(["5"]);
   });
-  test("invalid latex and unknown topic are rejected", async () => {
+  test("custom exercise infers its topic unless one is given", async () => {
+    const topic = async (body: object) => (await (await post("/api/exercise", body)).json()).exercise.topic;
+    expect(await topic({ latex: "3x-5=10" })).toBe("lineal");
+    expect(await topic({ latex: "x^2-5x+6=0" })).toBe("cuadratica");
+    expect(await topic({ latex: "x^2-9", kind: "factor", answer: ["(x-3)(x+3)"] })).toBe("factorizar");
+    expect(await topic({ latex: "(x+1)(x-1)", kind: "expand", answer: ["x^2-1"] })).toBe("operaciones");
+    expect(await topic({ latex: "x^2-5x+6=0", topic: "factorizar" })).toBe("factorizar");
+  });
+
+    test("invalid latex and unknown topic are rejected", async () => {
     expect((await post("/api/exercise", { latex: "2x+=" })).status).toBe(400);
     expect((await post("/api/exercise", { topic: "trigonometria" })).status).toBe(400);
   });

@@ -15,6 +15,15 @@ export interface ServerOptions {
   development?: boolean;
 }
 
+/** Topic of a custom exercise from its kind and the highest power of x. */
+function inferTopic(kind: Exercise["kind"], latex: string): Topic {
+  if (kind === "divide") return "division";
+  if (kind === "factor") return "factorizar";
+  if (kind === "expand") return "operaciones";
+  const powers = [...latex.matchAll(/x\s*\^\s*\{?\s*(\d+)/g)].map((m) => Number(m[1]));
+  return Math.max(1, ...powers) >= 2 ? "cuadratica" : "lineal";
+}
+
 const MODES: AskMode[] = ["explain", "tutor", "check", "exercise", "chat"];
 
 export function emptyBoard(): Board {
@@ -51,7 +60,7 @@ export function startServer(opts: ServerOptions) {
   const agentClients = new Set<Client>();
   const enc = new TextEncoder();
 
-  function sse(set: Set<Client>, onOpen?: (c: Client) => void, onClose?: () => void): Response {
+  function sse(set: Set<Client>, onOpen?: (c: Client) => void, onClose?: (c: Client) => void): Response {
     let client: Client;
     let ping: ReturnType<typeof setInterval>;
     const stream = new ReadableStream({
@@ -80,7 +89,7 @@ export function startServer(opts: ServerOptions) {
       cancel() {
         clearInterval(ping);
         set.delete(client);
-        onClose?.();
+        onClose?.(client);
       },
     });
     return new Response(stream, {
@@ -89,7 +98,11 @@ export function startServer(opts: ServerOptions) {
   }
 
   const broadcast = (event: ServerEvent) => webClients.forEach((c) => c.send(event));
-  const presence = () => broadcast({ type: "presence", agents: agentClients.size });
+  /** Model each connected agent declared (`gebra watch --model`); the newest one is shown. */
+  const agentModels = new Map<Client, string>();
+  const currentModel = () => [...agentModels.values()].filter(Boolean).at(-1);
+  const presenceEvent = (): ServerEvent => ({ type: "presence", agents: agentClients.size, model: currentModel() });
+  const presence = () => broadcast(presenceEvent());
 
   const addChat = (msg: ChatMessage) => {
     appendFileSync(file("chat.jsonl"), JSON.stringify(msg) + "\n");
@@ -117,17 +130,27 @@ export function startServer(opts: ServerOptions) {
       },
 
       "/api/events": {
-        GET: () => sse(webClients, (c) => c.send({ type: "presence", agents: agentClients.size })),
+        GET: () => sse(webClients, (c) => c.send(presenceEvent())),
       },
 
       "/api/agent/stream": {
-        GET: () => {
-          const res = sse(agentClients, () => queueMicrotask(presence), presence);
-          return res;
+        GET: (req) => {
+          const model = (new URL(req.url).searchParams.get("model") ?? "").trim().slice(0, 80);
+          return sse(
+            agentClients,
+            (c) => {
+              agentModels.set(c, model);
+              queueMicrotask(presence);
+            },
+            (c) => {
+              agentModels.delete(c);
+              presence();
+            },
+          );
         },
       },
 
-      "/api/state": { GET: () => json({ agents: agentClients.size }) },
+      "/api/state": { GET: () => json({ agents: agentClients.size, model: currentModel() }) },
 
       "/api/chat": { GET: () => json(readChat()) },
 
@@ -197,7 +220,7 @@ export function startServer(opts: ServerOptions) {
               }
             }
             if (!answer?.length) return json({ error: "answer es obligatorio para este tipo" }, 400);
-            ex = { id: id("ex"), topic: body.topic ?? "lineal", level: body.level ?? 1, kind, prompt: body.prompt ?? "Resolvé", latex: body.latex, answer };
+            ex = { id: id("ex"), topic: body.topic ?? inferTopic(kind, body.latex), level: body.level ?? 1, kind, prompt: body.prompt ?? "Resolvé", latex: body.latex, answer };
           } else {
             const topic = (body.topic ?? "lineal") as Topic;
             if (!["lineal", "cuadratica", "factorizar", "operaciones", "division"].includes(topic)) return json({ error: `tema desconocido: ${topic}` }, 400);

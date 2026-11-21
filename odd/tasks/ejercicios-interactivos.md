@@ -11,6 +11,8 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 - S4 Gauss tool: "Gauss (candidatos p/q)" — lists the p/q divisors, test each candidate with one click (P(r)=0?) and send the one that works to Ruffini.
 - S5 Theory panel: "Panel de teoría / fórmulas" — side sheet: quadratic formula, notable products, factoring cases, Ruffini, remainder theorem; insertable into the board.
 - S6 Overall: "Tambien añadi mas funcionalidades de UI/UX que me ayuden en el aprendizaje [...] Que esto sea increible". Delivery: "Todo junto, commit por unidad".
+- S7 Assistant label: "cambia el nombre de card profe por Asistente, y que ponga que modelo de IA esta respondiendo."
+- S8 Resizable cards: "hace las cards en pizarra resizables tambien."
 
 ## Tasks
 
@@ -19,7 +21,9 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 - T3 S3 — guided quadratic-formula widget — inline — commit: pending
 - T4 S4 — Gauss candidates widget, hands a root to Ruffini — inline — commit: pending
 - T5 S5 — theory/formulas side panel, insert into board — inline — commit: pending
-- T6 S1-S6 — README/AGENTS docs, browser E2E check — inline — commit: pending
+- T6 S1-S8 — README/AGENTS docs, browser E2E check — inline — commit: pending
+- T7 S7 — chat panel says "Asistente" and shows the model reported by `gebra watch` — inline — commit: pending
+- T8 S8 — resizable exercise cards (persisted size) — inline — commit: pending
 
 ## Log
 
@@ -28,3 +32,6 @@ Ruffini table, quadratic formula, Gauss candidates, and a theory panel. Branch: 
 - L3 (evidence): prior Catppuccin restyle committed as eada073 on this branch before T1.
 - L4 (evidence T1): card verified in headless Firefox on an isolated server (PORT=5191, temp GEBRA_DATA): exercise → card c1, typed 2x=4 ↵ x=2 → ✓ ✓ and "¡Resuelto!", CLI board shows card/lines/status; division card shows "Escribí C = …, R = … o usá Ruffini". Fixed: legacy "this is the statement" guard blocked editing the first card line; nested ✕/handle visible when the card was selected. 64 tests + tsc green.
 - L5 (seam for T2-T5): tools are `ToolItem` (kind "tool", `tool`, optional `card`, `data`). Pure logic + `summarize(data)` in `src/shared/tools/<tool>.ts`; widget in `src/web/tools/<tool>.ts` `register(board)` which may push `board.cardActions` and set `board.toolRenderers`; create tools with `board.addTool(tool, data, cardId)`, persist with `board.toolChanged(item)`, add result lines with `board.addCardStep(cardId, latex, edit)`. Tool CSS goes in `src/web/tools/<tool>.css` imported from the widget module.
+- L6 (evidence): all three workers (T2+T4, T3, T5) failed with provider quota; not retried — continuing inline.
+- L7 (user, verbatim): "Otra cosita, cambia el nombre de card profe por Asistente, y que ponga que modelo de IA esta respondiendo. y hace las cards en pizarra resizables tambien."
+- L8 (evidence T7/T8): isolated server 5191 + headless Firefox: `gebra watch --model "Claude Opus 5.5"` → chat header "Asistente" with model pill "Claude Opus 5.5" and "conectado"; card resized 440×218 → 628×346 by the corner grip and persisted (w=628, h=346); double-click on the grip resets. Also fixed: custom `--latex` exercises were always topic "lineal" (now inferred: cuadratica/factorizar/operaciones/division). Note: `bun --hot` reloads drop agent presence until `gebra watch` reconnects. 66 tests + tsc green.

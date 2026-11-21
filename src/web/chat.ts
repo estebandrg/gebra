@@ -1,4 +1,4 @@
-// Chat with the agent ("el profe"): modes, quick prompts tied to the selection, presence and typing state.
+// Chat with the agent (the "Asistente"): modes, quick prompts tied to the selection, presence and typing state.
 import type { AskMode, ChatMessage } from "../shared/types";
 import type { BoardView } from "./board";
 import type { Player } from "./player";
@@ -77,9 +77,13 @@ export class Chat {
     if (scroll) this.list.scrollTop = this.list.scrollHeight;
   }
 
-  setPresence(agents: number) {
+  setPresence(agents: number, model?: string) {
     this.agents = agents;
     const on = agents > 0;
+    const m = document.getElementById("presence-model")!;
+    m.textContent = model ?? "";
+    m.hidden = !on || !model;
+    m.title = model ? `Modelo de IA que responde: ${model}` : "";
     document.getElementById("presence-dot")!.classList.toggle("on", on);
     const t = document.getElementById("presence-text")!;
     t.textContent = on ? "conectado · te está mirando" : "desconectado";
@@ -144,7 +148,7 @@ export class Chat {
     if (!res?.ok) return toast("No pude enviar el mensaje (¿servidor apagado?)");
     await this.board.saveNow();
     const { agents } = (await res.json()) as { agents: number };
-    if (agents > 0) this.setTyping("el profe está mirando la pizarra…");
-    else this.system("El profe no está escuchando ahora. En la terminal decile **«conectate a la pizarra»**; tu pregunta queda guardada.");
+    if (agents > 0) this.setTyping("el asistente está mirando la pizarra…");
+    else this.system("El asistente no está escuchando ahora. En la terminal decile **«conectate a la pizarra»**; tu pregunta queda guardada.");
   }
 }
