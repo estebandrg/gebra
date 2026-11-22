@@ -424,7 +424,7 @@ export class BoardView {
     const r = checkStep(chain[idx - 1]!.latex, item.latex);
     if (r.status === "equivalent") badge("ok", "✓", r.reason);
     else if (r.status === "different") {
-      badge("bad", "✗ revisá este paso", r.reason);
+      badge("bad", "✗", r.reason);
       this.addWhyButton(node, item.id);
     }
     else if (item.latex.trim()) badge("unk", "?", r.reason);
@@ -445,7 +445,7 @@ export class BoardView {
     if (!r) return;
     if (r.status === "equivalent") b("ok", "✓", r.reason);
     else if (r.status === "different") {
-      b("bad", "✗ revisá", r.reason);
+      b("bad", "✗", r.reason);
       this.addWhyButton(node, item.id);
     }
     else b("unk", "?", r.reason);
