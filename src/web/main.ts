@@ -11,6 +11,16 @@ const board = new BoardView();
 registerTools(board);
 const player = new Player(board);
 const chat = new Chat(board, player);
+board.askWhy = (id, how) => {
+  board.select([id]);
+  if (how === "chat") document.body.classList.remove("chat-hidden");
+  void chat.send(
+    how === "chat"
+      ? "¿Por qué está mal este paso? Respondeme corto por chat, sin hacer una presentación."
+      : "¿Por qué está mal este paso? Mostrámelo en la pizarra, en 1 o 2 pasos.",
+    "why",
+  );
+};
 
 const TOPICS: [Topic, string, string][] = [
   ["lineal", "Ecuaciones lineales", "despejar x, ambos miembros, distributiva"],

@@ -98,7 +98,7 @@ export interface Board {
   updatedAt: string;
 }
 
-export type AskMode = "explain" | "tutor" | "check" | "exercise" | "chat";
+export type AskMode = "explain" | "tutor" | "check" | "exercise" | "chat" | "why";
 
 export interface Ask {
   id: string;

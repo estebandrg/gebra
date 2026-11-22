@@ -10,6 +10,7 @@ const MODE_LABEL: Record<AskMode, string> = {
   check: "¿Está bien?",
   exercise: "Ejercicio",
   chat: "Charla",
+  why: "¿Por qué?",
 };
 
 export class Chat {

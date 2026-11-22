@@ -87,6 +87,15 @@ describe("agent protocol", () => {
     expect(JSON.parse(inbox.at(-1)!).text).toBe("¿Cómo despejo x?");
   });
 
+  test("a 'why' ask (why is this step wrong?) keeps its mode instead of falling back to chat", async () => {
+    const ev = await nextEvent(
+      "/api/agent/stream",
+      (d) => d.type === "ask",
+      () => post("/api/ask", { text: "¿Por qué está mal este paso?", mode: "why", focus: ["m3"] }),
+    );
+    expect(ev.ask.mode).toBe("why");
+    expect(ev.ask.focus).toEqual(["m3"]);
+  });
   test("ask rejects empty text", async () => {
     const res = await post("/api/ask", { text: "  " });
     expect(res.status).toBe(400);

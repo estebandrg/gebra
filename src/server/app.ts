@@ -24,7 +24,7 @@ function inferTopic(kind: Exercise["kind"], latex: string): Topic {
   return Math.max(1, ...powers) >= 2 ? "cuadratica" : "lineal";
 }
 
-const MODES: AskMode[] = ["explain", "tutor", "check", "exercise", "chat"];
+const MODES: AskMode[] = ["explain", "tutor", "check", "exercise", "chat", "why"];
 
 export function emptyBoard(): Board {
   return { version: 1, items: [], exercises: [], selection: [], view: { x: 0, y: 0, zoom: 1 }, updatedAt: new Date().toISOString() };

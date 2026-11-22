@@ -64,6 +64,8 @@ export class BoardView {
   private undoStack: string[] = [];
   private redoStack: string[] = [];
   private temp = new Map<string, string>();
+  /** Asks the Asistente why a step is wrong: briefly in the chat, or drawn on the board. Wired by main.ts. */
+  askWhy: ((id: string, how: "chat" | "board") => void) | null = null;
   /** Set while a presentation runs so the board ignores clicks that would edit. */
   locked = false;
   readonly cardActions: CardAction[] = [];
@@ -314,7 +316,7 @@ export class BoardView {
     if (this.editing?.id === item.id) return;
 
     const content = node.querySelector<HTMLElement>(".content")!;
-    node.querySelector(":scope > .badge")?.remove();
+    node.querySelectorAll(":scope > .badge, :scope > .why-btn").forEach((n) => n.remove());
     if (item.kind === "math") {
       const latex = this.temp.get(item.id) ?? item.latex;
       renderMath(content, latex);
@@ -347,6 +349,55 @@ export class BoardView {
     }
   }
 
+  /** Small "¿Por qué?" button next to a wrong step; opens a menu to ask in the chat or on the board. */
+  private addWhyButton(node: HTMLElement, id: string) {
+    const b = el("button", "why-btn", node);
+    b.textContent = "¿Por qué?";
+    b.title = "Preguntale al asistente por qué está mal este paso";
+    b.addEventListener("pointerdown", (e) => e.stopPropagation());
+    b.addEventListener("dblclick", (e) => e.stopPropagation());
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.openWhyMenu(b, id);
+    });
+  }
+
+  private openWhyMenu(anchor: HTMLElement, id: string) {
+    document.getElementById("why-menu")?.remove();
+    const menu = el("div", "why-menu", document.body);
+    menu.id = "why-menu";
+    const r = anchor.getBoundingClientRect();
+    menu.style.left = `${Math.min(r.left, window.innerWidth - 250)}px`;
+    menu.style.top = `${r.bottom + 6}px`;
+    const close = () => {
+      menu.remove();
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", esc, true);
+    };
+    const outside = (e: Event) => {
+      if (!menu.contains(e.target as Node)) close();
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    const option = (how: "chat" | "board", title: string, hint: string) => {
+      const o = el("button", "", menu);
+      o.dataset.how = how;
+      el("strong", "", o).textContent = title;
+      el("small", "", o).textContent = hint;
+      o.addEventListener("click", () => {
+        close();
+        this.askWhy?.(id, how);
+      });
+    };
+    option("chat", "Por chat", "respuesta corta, sin demostración");
+    option("board", "En la pizarra", "te lo marco con un dibujo");
+    setTimeout(() => {
+      document.addEventListener("pointerdown", outside, true);
+      document.addEventListener("keydown", esc, true);
+    });
+  }
+
   private renderBadge(item: MathItem, node: HTMLElement) {
     if (item.card) return this.renderCardLineBadge(item, node);
     const chain = this.chainOf(item);
@@ -372,7 +423,10 @@ export class BoardView {
     if (idx <= 0) return;
     const r = checkStep(chain[idx - 1]!.latex, item.latex);
     if (r.status === "equivalent") badge("ok", "✓", r.reason);
-    else if (r.status === "different") badge("bad", "✗ revisá este paso", r.reason);
+    else if (r.status === "different") {
+      badge("bad", "✗ revisá este paso", r.reason);
+      this.addWhyButton(node, item.id);
+    }
     else if (item.latex.trim()) badge("unk", "?", r.reason);
   }
 
@@ -390,7 +444,10 @@ export class BoardView {
     const r = line?.check;
     if (!r) return;
     if (r.status === "equivalent") b("ok", "✓", r.reason);
-    else if (r.status === "different") b("bad", "✗ revisá", r.reason);
+    else if (r.status === "different") {
+      b("bad", "✗ revisá", r.reason);
+      this.addWhyButton(node, item.id);
+    }
     else b("unk", "?", r.reason);
   }
 
@@ -682,7 +739,7 @@ export class BoardView {
     if (item.kind === "card" || item.kind === "plot") return;
     this.commitEdit();
     const content = node.querySelector<HTMLElement>(".content")!;
-    node.querySelector(":scope > .badge")?.remove();
+    node.querySelectorAll(":scope > .badge, :scope > .why-btn").forEach((n) => n.remove());
     node.classList.add("editing");
     content.textContent = "";
 

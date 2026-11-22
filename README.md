@@ -22,6 +22,7 @@ with `gebra present` / `gebra say`.
 | New equation | double-click anywhere, or `N` |
 | Next step | `Enter` (copies the line so you transform it); `Shift+Enter`/`Esc` to finish |
 | Step check | ✓ equivalent · ✗ the step changed the solutions (hover for the reason) · ? could not verify |
+| ¿Por qué? | next to a ✗ step: **¿Por qué?** asks the Asistente why it is wrong — **Por chat** (short answer, no demonstration) or **En la pizarra** (a 1–2 step drawing on the exact mistake) |
 | Note | `T` (supports `$x^2$`) |
 | Plot | select a line, `G` (equations plot both sides and mark intersections) |
 | Exercise card | `E` → topic and level. The card has a fixed statement on top and your steps inside (`+ Paso`, `Enter`); each step is CAS-checked and the card turns green when solved. Drag it by its header, resize it from the corner (double-click the corner: auto size) |

@@ -38,6 +38,7 @@ Each event line looks like `ASK q123 mode=tutor focus=m3,m4 :: ¿por qué paso r
 | `check` | Walk the learner's chain. Circle the first ✗ step, explain the exact mistake (sign, distributive, lost root…), praise what was right. Do not redo everything. |
 | `exercise` | Put an exercise on the board with `gebra exercise` (generated or `--latex` custom similar to the focus) and `say` a short encouragement. |
 | `chat` | Short `gebra say` reply; a mini presentation if a drawing helps. |
+| `why` | The learner pressed **¿Por qué?** on a ✗ step (focus = that line). Find the exact mistake (sign, distributive, lost root…) with the CAS and **do not solve the exercise or reveal the final answer**. If the text says "por chat" / "sin hacer una presentación": one short `gebra say` (1–2 sentences), no `present`. If it says "en la pizarra": a 1–2 step presentation that circles the wrong part and explains it in one caption. |
 
 5. Send it: write JSON to a temp file and run `bun bin/gebra.ts present /tmp/p.json` (or pipe with `-`).
    The server validates it (unknown ids, bad colors, LaTeX KaTeX cannot render) and prints errors — fix and resend.
