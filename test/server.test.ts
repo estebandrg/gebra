@@ -96,6 +96,16 @@ describe("agent protocol", () => {
     expect(ev.ask.mode).toBe("why");
     expect(ev.ask.focus).toEqual(["m3"]);
   });
+  test("deleting the chat clears the history, tells the web, and a new conversation starts empty", async () => {
+    await post("/api/say", { text: "mensaje viejo" });
+    expect(((await (await fetch(base + "/api/chat")).json()) as any[]).length).toBeGreaterThan(0);
+    const ev = await nextEvent("/api/events", (d) => d.type === "chat-reset", () => fetch(base + "/api/chat", { method: "DELETE" }));
+    expect(ev.type).toBe("chat-reset");
+    expect(await (await fetch(base + "/api/chat")).json()).toEqual([]);
+    await post("/api/say", { text: "mensaje nuevo" });
+    const after = (await (await fetch(base + "/api/chat")).json()) as any[];
+    expect(after.map((m) => m.text)).toEqual(["mensaje nuevo"]);
+  });
   test("ask rejects empty text", async () => {
     const res = await post("/api/ask", { text: "  " });
     expect(res.status).toBe(400);

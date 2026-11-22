@@ -306,3 +306,9 @@ body.chat-hidden .chat { display: none; }
 .why-menu button { display: grid; gap: 1px; justify-items: start; text-align: left; padding: 8px 10px; border-radius: 8px; background: var(--base); border: 1px solid var(--line-soft); color: var(--text); }
 .why-menu button:hover { border-color: #c6a0f677; background: var(--surface0); }
 .why-menu small { color: var(--overlay1); font-size: 11px; }
+
+/* "Nueva" conversation button in the chat header */
+.chat-new { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 10px; border-radius: 999px; color: var(--subtext0); background: transparent; border: 1px solid var(--line); }
+.chat-new svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chat-new:hover { color: var(--text); background: var(--surface0); }
+.chat-new.confirm { color: var(--red); background: #ed87961c; border-color: #ed879655; }

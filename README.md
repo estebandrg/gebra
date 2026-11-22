@@ -34,6 +34,7 @@ with `gebra present` / `gebra say`.
 | Select / move / delete | click, `Shift`+click, drag the ⋮⋮ handle, `Supr`; `Ctrl+Z` undoes |
 | Pan / zoom | drag the background / wheel · `Ctrl`+wheel, `H` home |
 | Ask the Asistente | chat panel: Explicame (full presentation), Pista (hints only), ¿Está bien? (review), Charla |
+| New conversation | **Nueva** in the chat header (click twice to confirm): deletes the chat history and starts an empty conversation in every open tab. Questions stay archived in `.gebra/inbox.jsonl` and presentations in `.gebra/presentations/` |
 | Presentation | `space` pause · `←` `→` steps · `Esc` close · **Conservar** copies it to your board |
 
 While typing math: `/` fraction, `^` power, `sqrt` root, `*` product.

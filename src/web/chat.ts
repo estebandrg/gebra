@@ -43,6 +43,38 @@ export class Chat {
       if (id) void this.player.replay(id);
     });
     board.onChange(() => this.refreshContext());
+    this.wireNewConversation();
+  }
+
+  /** "Nueva": two clicks (the first asks to confirm) delete the conversation on the server and start an empty one. */
+  private wireNewConversation() {
+    const btn = document.getElementById("chat-new") as HTMLButtonElement;
+    const label = btn.querySelector("span")!;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const reset = () => {
+      clearTimeout(timer);
+      btn.classList.remove("confirm");
+      label.textContent = "Nueva";
+    };
+    btn.addEventListener("click", async () => {
+      if (!btn.classList.contains("confirm")) {
+        btn.classList.add("confirm");
+        label.textContent = "¿Borrar todo?";
+        timer = setTimeout(reset, 4000);
+        return;
+      }
+      reset();
+      const res = await fetch("/api/chat", { method: "DELETE" }).catch(() => null);
+      if (!res?.ok) return toast("No pude borrar la conversación (¿servidor apagado?)");
+      toast("Conversación nueva");
+    });
+  }
+
+  /** Empty conversation (after a delete): clears the list, the typing state and any running presentation. */
+  reset() {
+    this.player.close();
+    this.setTyping(null);
+    void this.load();
   }
 
   setMode(m: AskMode) {

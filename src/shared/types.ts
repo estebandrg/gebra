@@ -176,5 +176,6 @@ export type ServerEvent =
   | { type: "presentation"; presentation: Presentation }
   | { type: "chat"; message: ChatMessage }
   | { type: "presence"; agents: number; /** AI model the connected agent declared, if any. */ model?: string }
+  | { type: "chat-reset" }
   | { type: "status"; text: string }
   | { type: "exercise"; exercise: Exercise };

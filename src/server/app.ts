@@ -152,7 +152,15 @@ export function startServer(opts: ServerOptions) {
 
       "/api/state": { GET: () => json({ agents: agentClients.size, model: currentModel() }) },
 
-      "/api/chat": { GET: () => json(readChat()) },
+      "/api/chat": {
+        GET: () => json(readChat()),
+        // Start a new conversation: the history is deleted (asks stay archived in inbox.jsonl, presentations in their folder).
+        DELETE: () => {
+          writeFileSync(file("chat.jsonl"), "");
+          broadcast({ type: "chat-reset" });
+          return json({ ok: true });
+        },
+      },
 
       "/api/ask": {
         POST: async (req) => {

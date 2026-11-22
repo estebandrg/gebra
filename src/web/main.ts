@@ -43,6 +43,7 @@ function connect() {
     const ev = JSON.parse(e.data) as ServerEvent;
     if (ev.type === "presentation") player.play(ev.presentation);
     if (ev.type === "chat") chat.add(ev.message);
+    if (ev.type === "chat-reset") chat.reset();
     if (ev.type === "presence") chat.setPresence(ev.agents, ev.model);
     if (ev.type === "status") chat.setTyping(ev.text || null);
     if (ev.type === "exercise") board.addExercise(ev.exercise);
