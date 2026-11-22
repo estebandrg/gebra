@@ -87,8 +87,9 @@ and the learner's work lines inside (`m…`, each CAS-checked against the previo
 `gebra board` prints each card with its lines, verdicts, status and the expected answer (never reveal it in `tutor`).
 Target `c1` in a presentation to point at the statement; target its lines by their `m…` ids.
 
-The **TP** modal (`X`, data in `src/shared/catalog.ts`) loads the worksheet exercises as cards with ids like `tp2-5a-…`; the prompt
-starts with `Ej. 5a —`. Exercise kinds are `solve`, `factor`, `expand`, `divide` and `simplify` (done when the line is equivalent and
+The **TP** modal (`X`, data in `src/shared/catalog.ts`) loads the worksheet exercises (TP 2 and TP 3) as cards with ids like `tp2-5a-…` / `tp3-8b-…`; the prompt
+starts with `Ej. 5a —`. TP 3 exercises 9 and 11 are numeric (`simplify`: evaluate P(a)) and 15 solves for `k`; the prompt carries the
+context that is not in the expression (e.g. "sabiendo que 2 es raíz"). Exercise kinds are `solve`, `factor`, `expand`, `divide` and `simplify` (done when the line is equivalent and
 no longer than the expected answer, so judge simplification yourself with the CAS). A `solve` card whose expected answer shows as
 `sin solución` or `infinitas soluciones` has `answer` `["none"]` / `["all"]`: the learner finishes with a numeric contradiction
 (`0=5`), an identity (`0=0`) or those words. In `tutor` mode do not reveal which of the three it is.
