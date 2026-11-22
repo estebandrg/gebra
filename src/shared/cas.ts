@@ -40,7 +40,10 @@ export function normalizeLatex(latex: string): string {
 const WORDS = new Set(["sin", "sen", "cos", "tan", "cot", "sec", "csc", "log", "ln", "exp", "abs", "sqrt", "pi", "min", "max"]);
 
 function splitLetters(latex: string): string {
-  return latex.replace(/(?<![\\a-zA-Z])[a-zA-Z]{2,}(?![a-zA-Z])/g, (run) => (WORDS.has(run) ? run : [...run].join("\\cdot ")));
+  return latex
+    .replace(/(?<![\\a-zA-Z])[a-zA-Z]{2,}(?![a-zA-Z])/g, (run) => (WORDS.has(run) ? run : [...run].join("\\cdot ")))
+    // a number right after a letter is a product too: x5 = x·5 (not a variable called x5); x_1, x^2 and \commands are untouched
+    .replace(/(?<![\\a-zA-Z_])([a-zA-Z])(?=\d)/g, "$1\\cdot ");
 }
 
 function latexToNerd(latex: string): string {

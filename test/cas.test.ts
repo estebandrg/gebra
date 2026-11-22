@@ -110,3 +110,20 @@ describe("adjacent letters are a product", () => {
     expect(compareSteps("\\sqrt{x}\\cdot\\sqrt{x}", "x").status).toBe("equivalent");
   });
 });
+
+describe("a number right after a letter is a product", () => {
+  test("x5 is x·5, not a variable called x5", () => {
+    const m = parseMath("3x^2-x5+6x-10");
+    expect(m.kind).toBe("expression");
+    if (m.kind === "expression") expect(m.vars).toEqual(["x"]);
+    expect(compareSteps("3x^2-x5+6x-10", "3x^2+x-10").status).toBe("equivalent");
+    expect(compareSteps("x5", "5x").status).toBe("equivalent");
+    expect(compareSteps("xy5", "5xy").status).toBe("equivalent");
+  });
+  test("subscripts, powers, commands and decimals are left alone", () => {
+    expect(parseMath("x_1=2,x_2=3").kind).toBe("solutions");
+    expect(compareSteps("x^2", "x\\cdot x").status).toBe("equivalent");
+    expect(compareSteps("0.5x", "x/2").status).toBe("equivalent");
+    expect(compareSteps("2x^{10}", "2\\cdot x^{10}").status).toBe("equivalent");
+  });
+});
