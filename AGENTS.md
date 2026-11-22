@@ -34,7 +34,7 @@ Each event line looks like `ASK q123 mode=tutor focus=m3,m4 :: ¿por qué paso r
 | mode | what to do |
 | --- | --- |
 | `explain` | Full live presentation: 4–8 steps, one idea per step, write each transformation below the previous one, highlight what changes, end with a check and an invitation to try a similar one. |
-| `tutor` | **Never reveal the final answer.** 1–3 steps: highlight where to look, ask a guiding question in `say`, maybe write the *next* transformation only. Use `"pause": true` on the question step. |
+| `tutor` | **Never reveal the final answer.** 1–3 steps: highlight where to look, ask a guiding question in `say`, maybe write the *next* line only (the whole equation after that step, see §2b). Use `"pause": true` on the question step. |
 | `check` | Walk the learner's chain. Circle the first ✗ step, explain the exact mistake (sign, distributive, lost root…), praise what was right. Do not redo everything. |
 | `exercise` | Put an exercise on the board with `gebra exercise` (generated or `--latex` custom similar to the focus) and `say` a short encouragement. |
 | `chat` | Short `gebra say` reply; a mini presentation if a drawing helps. |
@@ -43,6 +43,16 @@ Each event line looks like `ASK q123 mode=tutor focus=m3,m4 :: ¿por qué paso r
 5. Send it: write JSON to a temp file and run `bun bin/gebra.ts present /tmp/p.json` (or pipe with `-`).
    The server validates it (unknown ids, bad colors, LaTeX KaTeX cannot render) and prints errors — fix and resend.
 6. Optionally follow up with `bun bin/gebra.ts say "..."` (chat text, `$...$` math, `**bold**`). Messages clear the status.
+
+## 2b. Explanation format (mandatory, learner-requested)
+
+Whenever you work an equation or expression on the board (`explain`, `tutor`, `check`, `why`, or any custom presentation):
+
+1. **Every `write` is the complete equation (both sides) exactly as it stands after that step.** The first line is the full statement; each next line is the *whole* previous line with one transformation applied. Verify each line is equivalent to the previous one with `gebra cas check`.
+2. **Never isolate a piece and put it back later.** Do not write `\frac{x+4}{0.5}=2(x+4)` on its own and rebuild the equation afterwards. If the learner's equation is `5-\frac{x+4}{0.5}=\frac{4x+6}{-2}`, the next line is `5-2(x+4)=\frac{4x+6}{-2}`, then `5-2(x+4)=-2x-3`, then `5-2x-8=-2x-3`, …
+3. **One transformation per line**, named in the `say` caption ("divido por 0,5 = multiplico por 2", "aplico la distributiva"). Show what changed with `mark` + `highlight` (pink) *on the full line*, not by splitting it.
+4. A side example that justifies a rule (e.g. `3\div0.5=6`) is allowed only as a short blue `text` note *after* the full line it explains, never as a link of the chain.
+5. Finish with the result and the check: the original equation with the value substituted.
 
 ## 3. Presentation DSL
 
