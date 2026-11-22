@@ -16,7 +16,7 @@ sections; clicking an exercise puts its card on the board. Branch: `feat/ejercic
 - T2 S3 — "sin solución" / "infinitas" as exercise answers (check, expected-answer text, server create) — inline — commit: 72bd79d
 - T3 S1 S2 S4 — catalog data (`src/shared/catalog.ts`) with CAS-validated answers and a test over every entry — inline — commit: 02e886c
 - T4 S1 S4 — modal with section tabs, opens from the toolbar and a shortcut, click adds the card — inline — commit: aaccd19
-- T5 S1-S4 — README/AGENTS/help docs, browser check — inline — commit:
+- T5 S1-S4 — README/AGENTS/help docs, browser check — inline — commit: d384b60
 
 ## Log
 
