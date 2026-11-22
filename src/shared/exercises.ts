@@ -330,7 +330,11 @@ export function checkExerciseStep(ex: Exercise, latex: string): { status: Progre
 export function exerciseAnswerTeX(ex: Exercise): string {
   if (ex.kind === "solve" && ex.answer[0] === "none") return "\\text{sin solución}";
   if (ex.kind === "solve" && ex.answer[0] === "all") return "\\text{infinitas soluciones}";
-  if (ex.kind === "solve") return ex.answer.map((a) => `x=${toTeX(a)}`).join(",\\ ");
+  if (ex.kind === "solve") {
+    const p = parseMath(ex.latex);
+    const v = p.kind === "equation" ? (p.vars[0] ?? "x") : "x";
+    return ex.answer.map((a) => `${v}=${toTeX(a)}`).join(",\\ ");
+  }
   if (ex.kind === "divide") return `C=${ex.answer[0]},\\ R=${ex.answer[1]}`;
   return ex.answer[0]!;
 }

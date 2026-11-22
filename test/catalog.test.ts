@@ -9,11 +9,11 @@ describe("TP2 catalog", () => {
   test("is split into sections with groups, and ids are unique", () => {
     expect(CATALOG.map((s) => s.id)).toEqual(["ecuaciones", "notables", "factorizacion", "cuadraticas", "simplificar"]);
     for (const s of CATALOG) expect(s.groups.length).toBeGreaterThan(0);
-    const ids = catalogItems().map((i) => i.id);
+    const ids = catalogItems("tp2").map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
   test("covers the worksheet without the word problems", () => {
-    const count = (num: number) => catalogItems().filter((i) => i.id.replace(/[a-z]+$/, "") === String(num)).length;
+    const count = (num: number) => catalogItems("tp2").filter((i) => i.id.replace(/[a-z]+$/, "") === String(num)).length;
     expect([1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map(count)).toEqual([10, 6, 12, 4, 5, 4, 3, 10, 5, 6, 8, 4, 3]);
     expect(count(2)).toBe(0);
   });
@@ -29,8 +29,13 @@ describe("TP2 catalog", () => {
       expect(ex.answer.length).toBeGreaterThan(0);
       if (item.kind === "solve") {
         const line = ex.answer[0] === "none" ? "\\text{sin solución}" : ex.answer[0] === "all" ? "\\text{infinitas soluciones}" : null;
+        const p = parseMath(item.latex);
+        const v = p.kind === "equation" ? (p.vars[0] ?? "x") : "x";
         if (line) expect(checkExerciseStep(ex, line).status).toBe("solved");
-        else expect(checkExerciseStep(ex, ex.answer.map((v) => `x=${v}`).join(",\\ ")).status).toBe("solved");
+        else expect(checkExerciseStep(ex, ex.answer.map((a) => `${v}=${a}`).join(",\\ ")).status).toBe("solved");
+      } else if (item.kind === "divide") {
+        expect(checkExerciseStep(ex, `C=${ex.answer[0]},\\ R=${ex.answer[1]}`).status).toBe("solved");
+        expect(checkExerciseStep(ex, `C=${ex.answer[0]},\\ R=${ex.answer[1]}+1`).status).toBe("wrong");
       } else {
         expect(compareSteps(item.latex, ex.answer[0]!).status).toBe("equivalent");
         expect(checkExerciseStep(ex, ex.answer[0]!)).toEqual({ status: "solved", reason: "¡Resuelto!" });
@@ -61,7 +66,8 @@ import { onBoard, searchCatalog } from "../src/shared/catalog";
 describe("catalog search and board marks", () => {
   test("empty query returns everything, an id returns that item", () => {
     expect(searchCatalog("").length).toBe(catalogItems().length);
-    expect(searchCatalog("5a").map((i) => i.id)).toEqual(["5a"]);
+    expect(searchCatalog("5a", "tp2").map((i) => i.id)).toEqual(["5a"]);
+    expect(searchCatalog("5a").map(itemKey)).toEqual(["tp2:5a", "tp3:5a"]);
   });
   test("matches group titles and statement text ignoring LaTeX noise", () => {
     expect(searchCatalog("diferencia de cuadrados").every((i) => i.id.startsWith("6"))).toBe(true);
@@ -87,5 +93,52 @@ describe("worksheet keys", () => {
     expect(catalogExercise(item).id.startsWith("tp2-5a-")).toBe(true);
     const keys = catalogItems().map(itemKey);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("TP3 catalog", () => {
+  const tp3 = () => catalogItems("tp3");
+  const numberOf = (i: { id: string }) => Number(i.id.match(/^\d+/)![0]);
+  test("has three sections and skips the conceptual exercises", () => {
+    expect(worksheet("tp3").sections.map((s) => s.id)).toEqual(["operaciones", "division", "raices"]);
+    const nums = [...new Set(tp3().map(numberOf))];
+    expect(nums).toEqual([5, 6, 7, 8, 9, 11, 14, 15]);
+    for (const skipped of [1, 2, 3, 4, 10, 12, 13]) expect(nums).not.toContain(skipped);
+  });
+  test("counts per exercise number", () => {
+    const count = (n: number) => tp3().filter((i) => numberOf(i) === n).length;
+    expect([5, 6, 7, 8, 9, 11, 14, 15].map(count)).toEqual([6, 1, 3, 8, 8, 9, 7, 5]);
+  });
+  test("every TP3 item is accepted by the card with its own answer", () => {
+    for (const item of tp3()) {
+      const ex = catalogExercise(item);
+      expect(ex.id.startsWith(`tp3-${item.id}-`)).toBe(true);
+      if (item.kind === "divide") expect(checkExerciseStep(ex, `C=${ex.answer[0]},\\ R=${ex.answer[1]}`).status).toBe("solved");
+      else if (item.kind === "solve") expect(checkExerciseStep(ex, `k=${ex.answer[0]}`).status).toBe("solved");
+      else expect(checkExerciseStep(ex, ex.answer[0]!).status).toBe("solved");
+    }
+  });
+  test("the remainder theorem items match the Ruffini remainders and the worksheet example", () => {
+    for (const id of "abcdefgh") {
+      const rem = findCatalogItem(`8${id}`, "tp3")!.answer![1];
+      expect(findCatalogItem(`9${id}`, "tp3")!.answer![0]).toBe(rem);
+    }
+    expect(findCatalogItem("8b", "tp3")!.answer).toEqual(["2x^{2}+2x+7", "13"]); // PDF: P(3) = 13 is the remainder
+    expect(findCatalogItem("7a", "tp3")!.answer).toEqual(["3x+2", "9"]);
+  });
+  test("finding k gives the values the CAS derives and shows k in the expected answer", () => {
+    const ks = "abcde".split("").map((id) => catalogExercise(findCatalogItem(`15${id}`, "tp3")!));
+    expect(ks.map((e) => e.answer[0])).toEqual(["-11", "6", "-3", "5", "0"]);
+    expect(exerciseAnswerTeX(ks[0]!)).toBe("k=-11");
+  });
+  test("roots: a root gives 0 and a non-root does not", () => {
+    expect(findCatalogItem("11a1", "tp3")!.answer).toEqual(["-6"]);
+    expect(findCatalogItem("11b1", "tp3")!.answer).toEqual(["0"]);
+    expect(findCatalogItem("11c3", "tp3")!.answer).toEqual(["0"]);
+  });
+  test("an exercise is on the board only for its own worksheet", () => {
+    const tp3a = findCatalogItem("5a", "tp3")!;
+    expect(onBoard([catalogExercise(findCatalogItem("5a", "tp2")!)], tp3a)).toBe(false);
+    expect(onBoard([catalogExercise(tp3a)], tp3a)).toBe(true);
   });
 });
