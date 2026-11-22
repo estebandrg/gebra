@@ -19,7 +19,7 @@ const HELP = `gebra — conexión del profe con la pizarra (${BASE})
   gebra say <texto...>        Manda un mensaje al chat de la web ($...$ = matemática)
   gebra exercise <tema> [nivel]                 Pone un ejercicio generado en la pizarra
         temas: lineal | cuadratica | factorizar | operaciones | division · nivel 1-3
-  gebra exercise --latex <ec> [--prompt <txt>] [--kind solve|factor|expand] [--answer a,b]
+  gebra exercise --latex <ec> [--prompt <txt>] [--kind solve|factor|expand|simplify] [--answer a,b]
                               Pone un ejercicio propio (solve: la respuesta la calcula el CAS)
   gebra status [texto]        Muestra "el profe está…" en la web (sin texto lo borra)
   gebra chat [n]              Últimos n mensajes del chat (por defecto 10)

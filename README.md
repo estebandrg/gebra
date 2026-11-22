@@ -25,6 +25,7 @@ with `gebra present` / `gebra say`.
 | Note | `T` (supports `$x^2$`) |
 | Plot | select a line, `G` (equations plot both sides and mark intersections) |
 | Exercise card | `E` → topic and level. The card has a fixed statement on top and your steps inside (`+ Paso`, `Enter`); each step is CAS-checked and the card turns green when solved. Drag it by its header, resize it from the corner (double-click the corner: auto size) |
+| TP exercises | `X` or **TP**: the "Trabajo Práctico 2: Ecuaciones y Factorización" worksheet (80 exercises) split into sections — Ecuaciones, Productos notables, Factorización, Cuadráticas, Simplificar — with search (`5a`, `trinomio`, `x^2-36`); a click puts the exercise on the board as a card. The word problems (ej. 2) are not loaded. Equations with no solution or infinitely many (1c, 1d…) are solved by reaching a false/true numeric line (`0=5`, `0=0`) or by writing "sin solución" / "infinitas soluciones" |
 | Ruffini | card button on divisions, or select a polynomial and press **Ruffini**: fill the real table cell by cell (coefficients with 0 for missing terms, root, bring down, multiply, add); every cell is checked with a hint, and the result goes into the card (an exact division in a factoring card is written as a factored step) |
 | Resolvente | card button on quadratics: a, b, c → Δ (with the substitution shown) → how many roots → x₁, x₂, each box checked |
 | Gauss | card button on cubic or higher polynomials, or **Gauss** on a selected polynomial: candidates ±p/q as chips, one click computes P(r), a root opens Ruffini |

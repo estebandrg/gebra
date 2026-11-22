@@ -87,6 +87,12 @@ and the learner's work lines inside (`m…`, each CAS-checked against the previo
 `gebra board` prints each card with its lines, verdicts, status and the expected answer (never reveal it in `tutor`).
 Target `c1` in a presentation to point at the statement; target its lines by their `m…` ids.
 
+The **TP** modal (`X`, data in `src/shared/catalog.ts`) loads the worksheet exercises as cards with ids like `tp2-5a-…`; the prompt
+starts with `Ej. 5a —`. Exercise kinds are `solve`, `factor`, `expand`, `divide` and `simplify` (done when the line is equivalent and
+no longer than the expected answer, so judge simplification yourself with the CAS). A `solve` card whose expected answer shows as
+`sin solución` or `infinitas soluciones` has `answer` `["none"]` / `["all"]`: the learner finishes with a numeric contradiction
+(`0=5`), an identity (`0=0`) or those words. In `tutor` mode do not reveal which of the three it is.
+
 Cards also hold interactive **tools** (`w1`, `w2`…: Ruffini table, quadratic formula, Gauss candidates) that the learner
 fills in; `gebra board` shows a one-line summary of each tool's state under its card. The learner opens them from the card
 buttons (**Ruffini** on divisions, **Resolvente** on quadratics, **Gauss** on cubic+ polynomials) or the toolbar; in
