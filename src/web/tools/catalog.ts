@@ -1,17 +1,19 @@
 // Exercises modal: the TP2 worksheet split into sections; any exercise goes onto the board as a card.
 import "./catalog.css";
-import { CATALOG, catalogExercise, catalogItems, onBoard, searchCatalog, type CatalogItem } from "../../shared/catalog";
+import { catalogExercise, catalogItems, itemKey, onBoard, searchCatalog, worksheet, type CatalogItem } from "../../shared/catalog";
 import type { BoardView } from "../board";
 import { el, renderMath, toast } from "../render";
 
 const ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>';
 
+const CATALOG = worksheet("tp2").sections;
+
 let modal: HTMLElement | null = null;
 let current = CATALOG[0]!.id;
 
 function hasHit(sec: (typeof CATALOG)[number], hits: Set<string> | null): boolean {
-  return sec.groups.some((g) => g.items.some((i) => !hits || hits.has(i.id)));
+  return sec.groups.some((g) => g.items.some((i) => !hits || hits.has(itemKey(i))));
 }
 
 function itemNode(board: BoardView, item: CatalogItem, parent: HTMLElement) {
@@ -31,11 +33,11 @@ function itemNode(board: BoardView, item: CatalogItem, parent: HTMLElement) {
 function render(board: BoardView) {
   if (!modal) return;
   const query = modal.querySelector<HTMLInputElement>(".cat-search")!.value;
-  const hits = query.trim() ? new Set(searchCatalog(query).map((i) => i.id)) : null;
+  const hits = query.trim() ? new Set(searchCatalog(query).map(itemKey)) : null;
 
   modal.querySelectorAll<HTMLButtonElement>(".cat-tab").forEach((tab) => {
     const sec = CATALOG.find((s) => s.id === tab.dataset.id)!;
-    const n = sec.groups.flatMap((g) => g.items).filter((i) => !hits || hits.has(i.id)).length;
+    const n = sec.groups.flatMap((g) => g.items).filter((i) => !hits || hits.has(itemKey(i))).length;
     tab.querySelector(".cat-n")!.textContent = String(n);
     tab.classList.toggle("empty", n === 0);
     tab.classList.toggle("active", tab.dataset.id === current);
@@ -47,7 +49,7 @@ function render(board: BoardView) {
   const sec = CATALOG.find((s) => s.id === current)!;
   let shown = 0;
   for (const g of sec.groups) {
-    const items = g.items.filter((i) => !hits || hits.has(i.id));
+    const items = g.items.filter((i) => !hits || hits.has(itemKey(i)));
     if (!items.length) continue;
     shown += items.length;
     const box = el("section", "cat-group", body);
@@ -83,7 +85,7 @@ function build(board: BoardView): HTMLElement {
   search.placeholder = "Buscar: 5a, trinomio, x^2-36…";
   search.addEventListener("input", () => {
     // jump to the first section that has a hit so the list is never empty by accident
-    const hits = search.value.trim() ? new Set(searchCatalog(search.value).map((i) => i.id)) : null;
+    const hits = search.value.trim() ? new Set(searchCatalog(search.value).map(itemKey)) : null;
     if (hits && !hasHit(CATALOG.find((s) => s.id === current)!, hits)) {
       const first = CATALOG.find((s) => hasHit(s, hits));
       if (first) current = first.id;

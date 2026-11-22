@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { CATALOG, catalogExercise, catalogItems, findCatalogItem } from "../src/shared/catalog";
+import { catalogExercise, catalogItems, findCatalogItem, worksheet } from "../src/shared/catalog";
+
+const CATALOG = worksheet("tp2").sections;
 import { compareSteps, parseMath } from "../src/shared/cas";
 import { checkExerciseStep, exerciseAnswerTeX } from "../src/shared/exercises";
 
@@ -72,5 +74,18 @@ describe("catalog search and board marks", () => {
     expect(onBoard([], item)).toBe(false);
     expect(onBoard([catalogExercise(item)], item)).toBe(true);
     expect(onBoard([catalogExercise(findCatalogItem("12d")!)], item)).toBe(false);
+  });
+});
+
+import { itemKey } from "../src/shared/catalog";
+
+describe("worksheet keys", () => {
+  test("items know their worksheet and have a unique key; exercise ids carry both", () => {
+    const item = findCatalogItem("5a")!;
+    expect(item.ws).toBe("tp2");
+    expect(itemKey(item)).toBe("tp2:5a");
+    expect(catalogExercise(item).id.startsWith("tp2-5a-")).toBe(true);
+    const keys = catalogItems().map(itemKey);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });
