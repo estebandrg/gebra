@@ -4,7 +4,13 @@
 .cat-head small { color: var(--overlay1); font-size: 12px; }
 .cat-close { width: 32px; height: 32px; padding: 0; background: transparent; color: var(--overlay1); }
 .cat-close:hover { background: var(--surface0); color: var(--text); }
-.cat-search { margin: 12px 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--base); color: var(--text); font: inherit; outline: none; }
+.cat-bar { display: flex; gap: 10px; align-items: center; margin: 12px 0; }
+.cat-wss { display: flex; gap: 6px; flex: none; }
+.cat-ws { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: var(--base); border: 1px solid var(--line); color: var(--subtext1); }
+.cat-ws:hover { border-color: #c6a0f666; background: var(--surface0); }
+.cat-ws.active { border-color: #c6a0f6aa; background: #c6a0f61a; color: var(--text); }
+.cat-ws.empty:not(.active) { opacity: .45; }
+.cat-search { flex: 1; margin: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--base); color: var(--text); font: inherit; outline: none; }
 .cat-search:focus { border-color: #c6a0f688; box-shadow: 0 0 0 3px #c6a0f61f; }
 .cat-search::placeholder { color: var(--overlay0); }
 .cat-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 230px 1fr; gap: 16px; }

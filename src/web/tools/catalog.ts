@@ -1,19 +1,37 @@
-// Exercises modal: the TP2 worksheet split into sections; any exercise goes onto the board as a card.
+// Exercises modal: the worksheets (TP 2, TP 3) split into sections; any exercise goes onto the board as a card.
 import "./catalog.css";
-import { catalogExercise, catalogItems, itemKey, onBoard, searchCatalog, worksheet, type CatalogItem } from "../../shared/catalog";
+import {
+  WORKSHEETS,
+  catalogExercise,
+  catalogItems,
+  itemKey,
+  onBoard,
+  searchCatalog,
+  worksheet,
+  type CatalogItem,
+  type CatalogSection,
+  type WorksheetId,
+} from "../../shared/catalog";
 import type { BoardView } from "../board";
 import { el, renderMath, toast } from "../render";
 
 const ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>';
 
-const CATALOG = worksheet("tp2").sections;
-
 let modal: HTMLElement | null = null;
-let current = CATALOG[0]!.id;
+let currentWs: WorksheetId = WORKSHEETS[0]!.id;
+/** Last open section of each worksheet. */
+const currentSection = new Map<WorksheetId, string>(WORKSHEETS.map((w) => [w.id, w.sections[0]!.id]));
 
-function hasHit(sec: (typeof CATALOG)[number], hits: Set<string> | null): boolean {
+const sectionsOfCurrent = (): CatalogSection[] => worksheet(currentWs).sections;
+const currentSec = (): CatalogSection => sectionsOfCurrent().find((s) => s.id === currentSection.get(currentWs))!;
+
+function hasHit(sec: CatalogSection, hits: Set<string> | null): boolean {
   return sec.groups.some((g) => g.items.some((i) => !hits || hits.has(itemKey(i))));
+}
+
+function hitsOf(query: string): Set<string> | null {
+  return query.trim() ? new Set(searchCatalog(query).map(itemKey)) : null;
 }
 
 function itemNode(board: BoardView, item: CatalogItem, parent: HTMLElement) {
@@ -26,29 +44,49 @@ function itemNode(board: BoardView, item: CatalogItem, parent: HTMLElement) {
   b.addEventListener("click", () => {
     board.addExercise(catalogExercise(item));
     toggle(board, false);
-    toast(`Puse el ${item.id} en la pizarra`);
+    toast(`Puse el ${item.id} (${worksheet(item.ws).tab}) en la pizarra`);
   });
 }
 
 function render(board: BoardView) {
   if (!modal) return;
-  const query = modal.querySelector<HTMLInputElement>(".cat-search")!.value;
-  const hits = query.trim() ? new Set(searchCatalog(query).map(itemKey)) : null;
+  const hits = hitsOf(modal.querySelector<HTMLInputElement>(".cat-search")!.value);
 
-  modal.querySelectorAll<HTMLButtonElement>(".cat-tab").forEach((tab) => {
-    const sec = CATALOG.find((s) => s.id === tab.dataset.id)!;
-    const n = sec.groups.flatMap((g) => g.items).filter((i) => !hits || hits.has(itemKey(i))).length;
+  modal.querySelectorAll<HTMLButtonElement>(".cat-ws").forEach((tab) => {
+    const id = tab.dataset.ws as WorksheetId;
+    const n = catalogItems(id).filter((i) => !hits || hits.has(itemKey(i))).length;
     tab.querySelector(".cat-n")!.textContent = String(n);
     tab.classList.toggle("empty", n === 0);
-    tab.classList.toggle("active", tab.dataset.id === current);
-    tab.setAttribute("aria-selected", String(tab.dataset.id === current));
+    tab.classList.toggle("active", id === currentWs);
+    tab.setAttribute("aria-selected", String(id === currentWs));
   });
+  modal.querySelector(".cat-sub")!.textContent = `${worksheet(currentWs).title} — Matemática 2 (UNRN)`;
+
+  const tabs = modal.querySelector<HTMLElement>(".cat-tabs")!;
+  tabs.textContent = "";
+  for (const sec of sectionsOfCurrent()) {
+    const t = el("button", "cat-tab", tabs);
+    t.dataset.id = sec.id;
+    t.setAttribute("role", "tab");
+    const n = sec.groups.flatMap((g) => g.items).filter((i) => !hits || hits.has(itemKey(i))).length;
+    const label = el("span", "cat-label", t);
+    el("strong", "", label).textContent = sec.title;
+    el("small", "", label).textContent = sec.hint;
+    el("span", "cat-n", t).textContent = String(n);
+    const active = sec.id === currentSec().id;
+    t.classList.toggle("active", active);
+    t.classList.toggle("empty", n === 0);
+    t.setAttribute("aria-selected", String(active));
+    t.addEventListener("click", () => {
+      currentSection.set(currentWs, sec.id);
+      render(board);
+    });
+  }
 
   const body = modal.querySelector<HTMLElement>(".cat-body")!;
   body.textContent = "";
-  const sec = CATALOG.find((s) => s.id === current)!;
   let shown = 0;
-  for (const g of sec.groups) {
+  for (const g of currentSec().groups) {
     const items = g.items.filter((i) => !hits || hits.has(itemKey(i)));
     if (!items.length) continue;
     shown += items.length;
@@ -58,6 +96,20 @@ function render(board: BoardView) {
     for (const i of items) itemNode(board, i, list);
   }
   if (!shown) el("p", "cat-empty", body).textContent = hits ? "Nada en esta sección con esas palabras: mirá las otras pestañas." : "Sección vacía.";
+}
+
+/** With a search active, jump to the first worksheet/section that has a hit when the current one has none. */
+function followHits(hits: Set<string> | null) {
+  if (!hits || hasHit(currentSec(), hits)) return;
+  const ordered = [worksheet(currentWs), ...WORKSHEETS.filter((w) => w.id !== currentWs)];
+  for (const w of ordered) {
+    const sec = w.sections.find((s) => hasHit(s, hits));
+    if (sec) {
+      currentWs = w.id;
+      currentSection.set(w.id, sec.id);
+      return;
+    }
+  }
 }
 
 function build(board: BoardView): HTMLElement {
@@ -73,23 +125,42 @@ function build(board: BoardView): HTMLElement {
   const head = el("header", "cat-head", card);
   const titles = el("div", "", head);
   el("h3", "", titles).textContent = "Ejercicios del TP";
-  el("small", "", titles).textContent = "TP 2 · Ecuaciones y Factorización — Matemática 2 (UNRN)";
+  el("small", "cat-sub", titles);
   const close = el("button", "cat-close", head);
   close.title = "Cerrar (Esc)";
   close.setAttribute("aria-label", "Cerrar");
   close.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   close.addEventListener("click", () => toggle(board, false));
 
-  const search = el("input", "cat-search", card);
+  const bar = el("div", "cat-bar", card);
+  const wsTabs = el("div", "cat-wss", bar);
+  wsTabs.setAttribute("role", "tablist");
+  for (const w of WORKSHEETS) {
+    const t = el("button", "cat-ws", wsTabs);
+    t.dataset.ws = w.id;
+    t.setAttribute("role", "tab");
+    t.title = w.title;
+    el("strong", "", t).textContent = w.tab;
+    el("span", "cat-n", t);
+    t.addEventListener("click", () => {
+      currentWs = w.id;
+      render(board);
+    });
+  }
+  wsTabs.addEventListener("keydown", (ev) => {
+    if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft") return;
+    ev.preventDefault();
+    const i = WORKSHEETS.findIndex((w) => w.id === currentWs);
+    currentWs = WORKSHEETS[(i + (ev.key === "ArrowRight" ? 1 : WORKSHEETS.length - 1)) % WORKSHEETS.length]!.id;
+    render(board);
+    wsTabs.querySelector<HTMLElement>(".cat-ws.active")?.focus();
+  });
+
+  const search = el("input", "cat-search", bar);
   search.type = "search";
-  search.placeholder = "Buscar: 5a, trinomio, x^2-36…";
+  search.placeholder = "Buscar: 5a, trinomio, ruffini, x^2-36…";
   search.addEventListener("input", () => {
-    // jump to the first section that has a hit so the list is never empty by accident
-    const hits = search.value.trim() ? new Set(searchCatalog(search.value).map(itemKey)) : null;
-    if (hits && !hasHit(CATALOG.find((s) => s.id === current)!, hits)) {
-      const first = CATALOG.find((s) => hasHit(s, hits));
-      if (first) current = first.id;
-    }
+    followHits(hitsOf(search.value));
     render(board);
   });
   search.addEventListener("keydown", (ev) => {
@@ -100,24 +171,12 @@ function build(board: BoardView): HTMLElement {
   const layout = el("div", "cat-layout", card);
   const tabs = el("nav", "cat-tabs", layout);
   tabs.setAttribute("role", "tablist");
-  for (const sec of CATALOG) {
-    const t = el("button", "cat-tab", tabs);
-    t.dataset.id = sec.id;
-    t.setAttribute("role", "tab");
-    const label = el("span", "cat-label", t);
-    el("strong", "", label).textContent = sec.title;
-    el("small", "", label).textContent = sec.hint;
-    el("span", "cat-n", t);
-    t.addEventListener("click", () => {
-      current = sec.id;
-      render(board);
-    });
-  }
   tabs.addEventListener("keydown", (ev) => {
     if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") return;
     ev.preventDefault();
-    const i = CATALOG.findIndex((s) => s.id === current);
-    current = CATALOG[(i + (ev.key === "ArrowDown" ? 1 : CATALOG.length - 1)) % CATALOG.length]!.id;
+    const list = sectionsOfCurrent();
+    const i = list.findIndex((s) => s.id === currentSec().id);
+    currentSection.set(currentWs, list[(i + (ev.key === "ArrowDown" ? 1 : list.length - 1)) % list.length]!.id);
     render(board);
     tabs.querySelector<HTMLElement>(".cat-tab.active")?.focus();
   });
