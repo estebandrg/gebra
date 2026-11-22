@@ -14,7 +14,7 @@ Add "Trabajo Práctico 3: Polinomios" (UNRN, Matemática 2) to the exercises cat
 - T1 S3 — catalog model with several worksheets (`ws` on items, unique keys, search/onBoard per worksheet) without changing TP 2 behavior — inline — commit: 0edb3bd
 - T2 S1 S2 S4 — TP 3 data (ej. 5–9, 11, 14, 15) with CAS-validated answers and tests — inline — commit: 1889041
 - T3 S3 — modal with the TP selector — inline — commit: 48fb8b0
-- T4 S1-S4 — README/AGENTS docs and browser check on an isolated instance — inline — commit:
+- T4 S1-S4 — README/AGENTS docs and browser check on an isolated instance — inline — commit: 7a13c8d
 
 ## Log
 
