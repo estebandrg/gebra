@@ -400,3 +400,9 @@ body.pointing .viewport, body.pointing .viewport * { cursor: crosshair !importan
 .msg .imgs a { display: block; line-height: 0; }
 .msg .imgs img { max-width: 100%; max-height: 180px; border-radius: 10px; border: 1px solid var(--line); object-fit: contain; background: var(--crust); }
 .composer.drop textarea { border-color: var(--teal); box-shadow: 0 0 0 3px #8bd5ca33; }
+
+/* close button floating above MathLive's virtual keyboard */
+.kb-close { position: fixed; right: 16px; z-index: 1000000; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--surface1); background: var(--surface0); color: var(--text); box-shadow: var(--shadow); cursor: pointer; }
+.kb-close:hover { background: var(--surface1); }
+.kb-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.kb-close[hidden] { display: none; }

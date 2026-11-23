@@ -181,3 +181,25 @@ document.addEventListener("paste", (e) => {
 });
 
 boot().catch((e) => toast(`Error al iniciar: ${e}`, 8000));
+
+// ------------------------------------------------------------ virtual keyboard: close button
+// MathLive's calculator-style keyboard opens from the field's toggle icon but offers no way to dismiss it.
+
+const kbClose = document.createElement("button");
+kbClose.className = "kb-close";
+kbClose.type = "button";
+kbClose.hidden = true;
+kbClose.title = "Cerrar el teclado";
+kbClose.setAttribute("aria-label", "Cerrar el teclado");
+kbClose.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+document.body.appendChild(kbClose);
+// keep the focus (and the line being edited) in the math field
+kbClose.addEventListener("pointerdown", (e) => e.preventDefault());
+kbClose.addEventListener("click", () => window.mathVirtualKeyboard.hide());
+const placeKbClose = () => {
+  const kb = window.mathVirtualKeyboard;
+  kbClose.hidden = !kb.visible;
+  if (kb.visible) kbClose.style.bottom = `${window.innerHeight - kb.boundingRect.top + 8}px`;
+};
+window.mathVirtualKeyboard.addEventListener("virtual-keyboard-toggle", placeKbClose);
+window.mathVirtualKeyboard.addEventListener("geometrychange", placeKbClose);
