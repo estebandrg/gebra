@@ -1,8 +1,9 @@
 // Chat with the agent (the "Asistente"): modes, quick prompts tied to the selection, presence and typing state.
-import type { AskMode, ChatMessage } from "../shared/types";
+import type { AskMode, ChatMessage, Pointed, Quote } from "../shared/types";
 import type { BoardView } from "./board";
 import type { Player } from "./player";
-import { el, renderMath, renderRich, toast } from "./render";
+import { MathEditor } from "./live-math";
+import { copyLatexOnClick, el, renderMath, renderRich, toast } from "./render";
 
 const MODE_LABEL: Record<AskMode, string> = {
   explain: "Explicame",
@@ -13,28 +14,47 @@ const MODE_LABEL: Record<AskMode, string> = {
   why: "¿Por qué?",
 };
 
+/** Something pointed at; `rect` (board space) is set for a zone dragged over the board, to draw its numbered box. */
+export type PointedZone = Pointed & { rect?: { x: number; y: number; w: number; h: number } };
+
+const MAX_POINTED = 8;
+
 export class Chat {
   private mode: AskMode = "explain";
   private agents = 0;
   private readonly list = document.getElementById("messages")!;
-  private readonly input = document.getElementById("ask-input") as HTMLTextAreaElement;
+  private readonly input = document.getElementById("ask-input")!;
+  private readonly editor: MathEditor;
+  private readonly attachmentsEl = document.getElementById("attachments")!;
+  /** Images pasted into the composer: uploaded file name (once the upload finishes) and its preview node. */
+  private attachments: { name?: string; node: HTMLElement }[] = [];
+  private readonly quoteEl = document.getElementById("quote-bar")!;
+  /** Message the learner is replying to; travels with the next question. */
+  private quote: Quote | null = null;
+  private readonly selectionEl = document.getElementById("selection-bar")!;
+  /** Everything pointed at so far (selected texts and board zones); travels with the next question. */
+  private pointed: PointedZone[] = [];
+  private pointedListeners: ((list: PointedZone[]) => void)[] = [];
 
   constructor(
     private board: BoardView,
     private player: Player,
   ) {
+    this.editor = new MathEditor(this.input, document.getElementById("math-preview")!);
+    // Buttons never take focus from the box: it would swap to the rendered view and shift the layout mid-click.
+    document.getElementById("composer")!.addEventListener("mousedown", (e) => (e.target as HTMLElement).closest("button") && e.preventDefault());
     document.getElementById("modes")!.addEventListener("click", (e) => {
       const m = (e.target as HTMLElement).closest<HTMLElement>("[data-mode]")?.dataset.mode as AskMode | undefined;
       if (m) this.setMode(m);
     });
     document.getElementById("composer")!.addEventListener("submit", (e) => {
       e.preventDefault();
-      void this.send(this.input.value);
+      void this.send(this.editor.value);
     });
     this.input.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        void this.send(this.input.value);
+        void this.send(this.editor.value);
       }
       e.stopPropagation();
     });
@@ -42,8 +62,103 @@ export class Chat {
       const id = (e.target as HTMLElement).closest<HTMLElement>("[data-replay]")?.dataset.replay;
       if (id) void this.player.replay(id);
     });
+    copyLatexOnClick(this.list);
+    copyLatexOnClick(document.getElementById("caption")!);
+    this.wireImages();
+    this.wireResize();
     board.onChange(() => this.refreshContext());
     this.wireNewConversation();
+  }
+
+  /** Paste (Ctrl+V) or drop images on the composer: each is uploaded and shown as a removable thumbnail. */
+  private wireImages() {
+    const composer = document.getElementById("composer")!;
+    const imagesOf = (data: DataTransfer | null) => [...(data?.files ?? [])].filter((f) => f.type.startsWith("image/"));
+    this.input.addEventListener("paste", (e) => {
+      const files = imagesOf(e.clipboardData);
+      if (!files.length) return;
+      e.preventDefault();
+      files.forEach((f) => void this.attach(f));
+    });
+    const picker = document.getElementById("attach-input") as HTMLInputElement;
+    document.getElementById("attach-btn")!.addEventListener("click", () => picker.click());
+    picker.addEventListener("change", () => {
+      imagesOf({ files: picker.files } as DataTransfer).forEach((f) => void this.attach(f));
+      picker.value = "";
+    });
+    composer.addEventListener("dragover", (e) => {
+      if (!imagesOf(e.dataTransfer).length && ![...(e.dataTransfer?.items ?? [])].some((i) => i.type.startsWith("image/"))) return;
+      e.preventDefault();
+      composer.classList.add("drop");
+    });
+    composer.addEventListener("dragleave", () => composer.classList.remove("drop"));
+    composer.addEventListener("drop", (e) => {
+      composer.classList.remove("drop");
+      const files = imagesOf(e.dataTransfer);
+      if (!files.length) return;
+      e.preventDefault();
+      files.forEach((f) => void this.attach(f));
+    });
+  }
+
+  /** Drag the left edge of the sidebar to change its width (kept between visits; double click resets it). */
+  private wireResize() {
+    const KEY = "gebra.chatWidth";
+    const DEFAULT = 380;
+    const root = document.documentElement;
+    const clamp = (w: number) => Math.round(Math.min(Math.max(300, w), Math.min(760, window.innerWidth * 0.65)));
+    const apply = (w: number) => root.style.setProperty("--chat-w", `${clamp(w)}px`);
+    const saved = Number(localStorage.getItem(KEY));
+    if (saved) apply(saved);
+    window.addEventListener("resize", () => apply(parseFloat(getComputedStyle(root).getPropertyValue("--chat-w")) || DEFAULT));
+    const handle = document.getElementById("chat-resizer")!;
+    handle.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      document.body.classList.add("resizing-chat");
+    });
+    handle.addEventListener("pointermove", (e) => {
+      if (handle.hasPointerCapture(e.pointerId)) apply(window.innerWidth - e.clientX);
+    });
+    const end = (e: PointerEvent) => {
+      if (!handle.hasPointerCapture(e.pointerId)) return;
+      handle.releasePointerCapture(e.pointerId);
+      document.body.classList.remove("resizing-chat");
+      localStorage.setItem(KEY, String(parseFloat(getComputedStyle(root).getPropertyValue("--chat-w")) || DEFAULT));
+    };
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+    handle.addEventListener("dblclick", () => {
+      apply(DEFAULT);
+      localStorage.removeItem(KEY);
+    });
+  }
+
+  private async attach(file: File) {
+    const node = el("div", "thumb loading", this.attachmentsEl);
+    const img = el("img", "", node);
+    img.src = URL.createObjectURL(file);
+    img.alt = "Imagen adjunta";
+    const att: { name?: string; node: HTMLElement } = { node };
+    this.attachments.push(att);
+    const remove = el("button", "", node);
+    remove.type = "button";
+    remove.textContent = "✕";
+    remove.title = "Quitar imagen";
+    remove.addEventListener("click", () => {
+      this.attachments = this.attachments.filter((a) => a !== att);
+      URL.revokeObjectURL(img.src);
+      node.remove();
+    });
+    const res = await fetch("/api/upload", { method: "POST", headers: { "content-type": file.type }, body: file }).catch(() => null);
+    const body = res?.ok ? ((await res.json()) as { name: string }) : null;
+    if (!body) {
+      toast("No pude subir la imagen (¿servidor apagado o más de 10 MB?)");
+      remove.click();
+      return;
+    }
+    att.name = body.name;
+    node.classList.remove("loading");
   }
 
   /** "Nueva": two clicks (the first asks to confirm) delete the conversation on the server and start an empty one. */
@@ -70,9 +185,87 @@ export class Chat {
     });
   }
 
+  /** Reply to a message: the quote shows above the box and goes along with the next question. */
+  setQuote(q: Quote | null) {
+    this.quote = q;
+    this.quoteEl.textContent = "";
+    this.quoteEl.hidden = !q;
+    if (!q) return;
+    el("span", "quote-from", this.quoteEl).textContent = q.from === "me" ? "Vos" : "Asistente";
+    renderRich(el("span", "quote-text", this.quoteEl), q.text);
+    const x = el("button", "quote-x", this.quoteEl);
+    x.type = "button";
+    x.textContent = "✕";
+    x.title = "Quitar la cita";
+    x.addEventListener("click", () => this.setQuote(null));
+    this.editor.focus();
+  }
+
+  /** Subscribe to changes of the pointed-at list (the board draws a numbered box per zone). Called once right away. */
+  onPointedChange(cb: (list: PointedZone[]) => void) {
+    this.pointedListeners.push(cb);
+    cb(this.pointed);
+  }
+
+  /** Point at something more: it shows above the box and goes with the next question, whatever it is. */
+  addPointed(p: PointedZone) {
+    if (this.pointed.some((q) => !q.rect && !p.rect && q.text === p.text)) return toast("Eso ya está señalado");
+    if (this.pointed.length >= MAX_POINTED) return toast(`Podés señalar hasta ${MAX_POINTED} cosas por pregunta`);
+    this.pointed.push(p);
+    this.renderPointed();
+  }
+
+  /** Undo the last thing pointed at. */
+  undoPointed() {
+    if (!this.pointed.pop()) return toast("No hay nada señalado");
+    this.renderPointed();
+  }
+
+  removePointed(i: number) {
+    this.pointed.splice(i, 1);
+    this.renderPointed();
+  }
+
+  clearPointed(quiet = false) {
+    if (!this.pointed.length) return;
+    this.pointed = [];
+    this.renderPointed();
+    if (!quiet) toast("Selección cancelada");
+  }
+
+  private renderPointed() {
+    const bar = this.selectionEl;
+    bar.textContent = "";
+    bar.hidden = !this.pointed.length;
+    if (this.pointed.length) {
+      const head = el("div", "pointed-head", bar);
+      el("span", "quote-from", head).textContent = `Señalaste (${this.pointed.length})`;
+      if (this.pointed.length > 1) {
+        const all = el("button", "", head);
+        all.type = "button";
+        all.textContent = "Quitar todo";
+        all.addEventListener("click", () => this.clearPointed());
+      }
+      this.pointed.forEach((p, i) => {
+        const row = el("div", "pointed-row", bar);
+        el("b", "pointed-n", row).textContent = String(i + 1);
+        renderRich(el("span", "quote-text", row), p.text);
+        const x = el("button", "pointed-x", row);
+        x.type = "button";
+        x.textContent = "✕";
+        x.title = "Quitar esta selección";
+        x.addEventListener("click", () => this.removePointed(i));
+      });
+      document.body.classList.remove("chat-hidden");
+    }
+    this.pointedListeners.forEach((cb) => cb(this.pointed));
+  }
+
   /** Empty conversation (after a delete): clears the list, the typing state and any running presentation. */
   reset() {
     this.player.close();
+    this.setQuote(null);
+    this.clearPointed(true);
     this.setTyping(null);
     void this.load();
   }
@@ -97,8 +290,40 @@ export class Chat {
   }
 
   add(m: ChatMessage, scroll = true) {
+    if (m.skill) {
+      // A notice, not a reply: it must not clear the "typing" indicator.
+      const n = el("div", "msg system skill", this.list);
+      n.textContent = `📘 Skill cargada: ${m.skill.title}`;
+      n.title = `skills/${m.skill.name}/SKILL.md`;
+      if (scroll) this.list.scrollTop = this.list.scrollHeight;
+      return;
+    }
     const d = el("div", `msg ${m.from}${m.presentationId ? " pres" : ""}`, this.list);
     if (m.from === "me" && m.mode) el("span", "mode", d).textContent = MODE_LABEL[m.mode];
+    if (m.pointed?.length) {
+      const s = el("blockquote", "quoted pointed", d);
+      const many = m.pointed.length > 1;
+      el("span", "quote-from", s).textContent = many ? `Señalé (${m.pointed.length})` : "Señalé";
+      m.pointed.forEach((p, i) => renderRich(el("span", "quote-text", s), many ? `${i + 1}. ${p.text}` : p.text));
+    }
+    if (m.quote) {
+      const q = el("blockquote", "quoted", d);
+      el("span", "quote-from", q).textContent = m.quote.from === "me" ? "Vos" : "Asistente";
+      renderRich(el("span", "quote-text", q), m.quote.text);
+    }
+    if (m.images?.length) {
+      const imgs = el("div", "imgs", d);
+      for (const name of m.images) {
+        const a = el("a", "", imgs);
+        a.href = `/api/uploads/${name}`;
+        a.target = "_blank";
+        a.rel = "noopener";
+        const img = el("img", "", a);
+        img.src = a.href;
+        img.alt = "Imagen enviada";
+        img.loading = "lazy";
+      }
+    }
     const body = el("div", "", d);
     renderRich(body, m.presentationId ? `🎬 ${m.text}` : m.text);
     if (m.presentationId) {
@@ -106,6 +331,11 @@ export class Chat {
       b.textContent = "▶ Ver de nuevo";
       b.dataset.replay = m.presentationId;
     }
+    const reply = el("button", "reply-btn", d);
+    reply.type = "button";
+    reply.textContent = "↩";
+    reply.title = "Responder a este mensaje";
+    reply.addEventListener("click", () => this.setQuote({ from: m.from, text: m.text.slice(0, 600) }));
     if (m.from === "profe") this.setTyping(null);
     if (scroll) this.list.scrollTop = this.list.scrollHeight;
   }
@@ -171,14 +401,25 @@ export class Chat {
 
   async send(raw: string, mode = this.mode) {
     const text = raw.trim();
-    if (!text) return;
-    this.input.value = "";
+    if (this.attachments.some((a) => !a.name)) return toast("Esperá a que termine de subirse la imagen");
+    const images = this.attachments.map((a) => a.name!);
+    if (!text && !images.length) return;
+    const quote = this.quote;
+    const pointed = this.pointed.map(({ text, ids, detail, equation, parts, marked }) => ({ text, ids, detail, equation, parts, marked }));
+    this.editor.value = "";
     const res = await fetch("/api/ask", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, mode, focus: this.board.focusIds() }),
+      body: JSON.stringify({ text, mode, focus: [...new Set([...this.board.focusIds(), ...pointed.flatMap((p) => p.ids ?? [])])], images, quote, pointed }),
     }).catch(() => null);
-    if (!res?.ok) return toast("No pude enviar el mensaje (¿servidor apagado?)");
+    if (!res?.ok) {
+      this.editor.value = raw;
+        return toast("No pude enviar el mensaje (¿servidor apagado?)");
+    }
+    this.attachments = [];
+    this.attachmentsEl.textContent = "";
+    this.setQuote(null);
+    this.clearPointed(true);
     await this.board.saveNow();
     const { agents } = (await res.json()) as { agents: number };
     if (agents > 0) this.setTyping("el asistente está mirando la pizarra…");

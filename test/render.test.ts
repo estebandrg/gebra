@@ -23,3 +23,13 @@ describe("richTokens", () => {
     expect(richTokens("a ** b")).toEqual([{ kind: "text", value: "a ** b", bold: false }]);
   });
 });
+
+describe("richTokens with pasted display math", () => {
+  test("$$x$$ reads as a single formula, not stray dollar signs", () => {
+    expect(richTokens("mirá $$2x+3=7$$ acá")).toEqual([
+      { kind: "text", value: "mirá ", bold: false },
+      { kind: "math", value: "2x+3=7", bold: false },
+      { kind: "text", value: " acá", bold: false },
+    ]);
+  });
+});

@@ -4,13 +4,27 @@ import type { Board, ServerEvent, Topic } from "../shared/types";
 import { makeExercise } from "../shared/exercises";
 import { BoardView } from "./board";
 import { Chat } from "./chat";
+import { DrawTool } from "./draw";
 import { Player } from "./player";
+import { pointedText, wireSelectionAsk } from "./pointer";
+import { PointTool } from "./pointing";
 import { el, toast } from "./render";
 
 const board = new BoardView();
 registerTools(board);
 const player = new Player(board);
+const draw = new DrawTool(board);
 const chat = new Chat(board, player);
+wireSelectionAsk(chat);
+const point = new PointTool(board, chat, player);
+
+// "Señalar": with text selected it points at that text; otherwise it opens the drag-a-zone mode on the board.
+document.getElementById("point-btn")!.addEventListener("click", () => {
+  const text = pointedText();
+  if (!text) return point.toggle();
+  chat.addPointed({ text });
+  window.getSelection()?.removeAllRanges();
+});
 board.askWhy = (id, how) => {
   board.select([id]);
   if (how === "chat") document.body.classList.remove("chat-hidden");
@@ -75,6 +89,9 @@ function tool(name: string) {
       const p = board.freeSpot();
       return board.addText(Math.round(p.x), Math.round(p.y));
     }
+    case "draw":
+      point.toggle(false);
+      return draw.toggle();
     case "plot":
       return board.plotSelection();
     case "exercise":
@@ -112,7 +129,7 @@ document.addEventListener("pointerdown", (e) => {
 
 document.addEventListener("keydown", (e) => {
   const t = e.target as HTMLElement;
-  if (t.closest("math-field, textarea, input, select") || board.isEditing()) return;
+  if (t.closest("math-field, textarea, input, select, [contenteditable=true]") || board.isEditing()) return;
   if (player.active) {
     if (e.key === " ") (e.preventDefault(), player.toggle());
     else if (e.key === "ArrowRight") player.next();
@@ -121,12 +138,24 @@ document.addEventListener("keydown", (e) => {
     return;
   }
   const mod = e.ctrlKey || e.metaKey;
+  if (point.active && mod && e.key.toLowerCase() === "z") return (e.preventDefault(), chat.undoPointed());
   if (mod && e.key.toLowerCase() === "z") return (e.preventDefault(), board.undo(e.shiftKey));
   if (mod && e.key.toLowerCase() === "y") return (e.preventDefault(), board.undo(true));
+  if (mod && e.key.toLowerCase() === "c" && !window.getSelection()?.toString() && board.copySelection()) return e.preventDefault();
   if (mod) return;
   const key = e.key.toLowerCase();
+  if (point.active) {
+    if (e.key === "Escape") (e.preventDefault(), point.cancel());
+    else if (e.key === "Enter") (e.preventDefault(), point.toggle(false));
+    return;
+  }
+  if (draw.active) {
+    if (e.key === "Escape" || key === "d") (e.preventDefault(), draw.toggle(false));
+    return;
+  }
   if (key === "n") (e.preventDefault(), tool("math"));
   else if (key === "t") (e.preventDefault(), tool("text"));
+  else if (key === "d") (e.preventDefault(), tool("draw"));
   else if (key === "g") tool("plot");
   else if (key === "e") tool("exercise");
   else if (key === "h") tool("home");
@@ -140,6 +169,15 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     board.startEdit(board.board.selection[0]!);
   }
+});
+
+// Paste on the board (not in a field/box): text becomes an equation; images are left to the chat box.
+document.addEventListener("paste", (e) => {
+  if ((e.target as HTMLElement).closest("math-field, textarea, input, select, [contenteditable=true]") || board.isEditing() || player.active) return;
+  const text = e.clipboardData?.getData("text/plain") ?? "";
+  if (!text.trim()) return;
+  e.preventDefault();
+  board.pasteMath(text);
 });
 
 boot().catch((e) => toast(`Error al iniciar: ${e}`, 8000));

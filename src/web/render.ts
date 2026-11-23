@@ -1,5 +1,6 @@
 // KaTeX helpers: block math, and rich text where `$...$` segments are math.
 import katex from "katex";
+import { wrapMath } from "../shared/latex";
 import { richTokens } from "./rich";
 
 const OPTS = { throwOnError: false, trust: true, strict: "ignore" as const, output: "html" as const };
@@ -12,6 +13,11 @@ export function renderMath(el: HTMLElement, latex: string) {
   katex.render(`\\displaystyle ${latex}`, el, OPTS);
 }
 
+/** One formula, inline (or as a display block). */
+export function renderTeX(el: HTMLElement, latex: string, display = false) {
+  katex.render(latex, el, { ...OPTS, displayMode: display });
+}
+
 export function renderRich(el: HTMLElement, text: string) {
   el.textContent = "";
   let strong: HTMLElement | null = null;
@@ -21,10 +27,30 @@ export function renderRich(el: HTMLElement, text: string) {
     const parent = strong ?? el;
     if (tok.kind === "math") {
       const span = document.createElement("span");
+      span.dataset.latex = tok.value;
       katex.render(tok.value, span, OPTS);
       parent.appendChild(span);
     } else parent.appendChild(document.createTextNode(tok.value));
   }
+}
+
+/** Copy text to the clipboard and say so (or say it failed). */
+export async function copyText(text: string, ok = "LaTeX copiado entre $…$") {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(ok);
+  } catch {
+    toast("No pude copiar");
+  }
+}
+
+/** Click on a rendered formula (inside `root`) copies its LaTeX. */
+export function copyLatexOnClick(root: HTMLElement) {
+  root.classList.add("tex-copy");
+  root.addEventListener("click", (e) => {
+    const latex = (e.target as HTMLElement).closest<HTMLElement>("[data-latex]")?.dataset.latex;
+    if (latex) void copyText(wrapMath(latex));
+  });
 }
 
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, parent?: HTMLElement): HTMLElementTagNameMap[K] {

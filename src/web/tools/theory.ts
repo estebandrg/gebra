@@ -2,6 +2,7 @@
 import "./theory.css";
 import { searchTheory, THEORY, type TheoryEntry } from "../../shared/theory";
 import type { BoardView } from "../board";
+import { wrapMath } from "../../shared/latex";
 import { el, renderMath, renderRich, toast } from "../render";
 
 const BOOK_ICON =
@@ -33,7 +34,7 @@ function entryNode(board: BoardView, e: TheoryEntry, parent: HTMLElement) {
   const copy = el("button", "th-copy", actions);
   copy.textContent = "Copiar LaTeX";
   copy.addEventListener("click", () => {
-    void navigator.clipboard?.writeText(e.latex).then(
+    void navigator.clipboard?.writeText(wrapMath(e.latex)).then(
       () => toast("LaTeX copiado"),
       () => toast("No pude copiar"),
     );

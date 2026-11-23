@@ -13,6 +13,7 @@
         <div class="group">
           <button data-tool="math" class="primary" title="Nueva ecuación (N)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="label">Ecuación</span></button>
           <button data-tool="text" title="Nota de texto (T)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg><span class="label">Nota</span></button>
+          <button data-tool="draw" id="tool-draw" title="Dibujar a mano alzada (D)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/></svg><span class="label">Dibujar</span></button>
           <button data-tool="plot" title="Graficar lo seleccionado (G)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15c3-8 6-8 9-2 1.5 3 3 3 4 1"/></svg><span class="label">Graficar</span></button>
           <button data-tool="exercise" title="Generar ejercicio (E)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg><span class="label">Ejercicio</span></button>
         </div>
@@ -38,7 +39,26 @@
         <div class="world" id="world">
           <div class="items" id="items"></div>
           <svg class="ink" id="ink" width="1" height="1"></svg>
+          <svg class="live" id="draw-live" width="1" height="1"></svg>
           <div class="pres-layer" id="pres-layer"></div>
+        </div>
+        <div class="draw-bar" id="draw-bar" hidden>
+          <div class="draw-colors"></div>
+          <span class="sep"></span>
+          <button data-size="2" title="Fino" aria-label="Trazo fino"><i style="--d:2px"></i></button>
+          <button data-size="4" title="Medio" aria-label="Trazo medio"><i style="--d:4px"></i></button>
+          <button data-size="8" title="Grueso" aria-label="Trazo grueso"><i style="--d:8px"></i></button>
+          <span class="sep"></span>
+          <button data-undo title="Deshacer (Ctrl+Z)" aria-label="Deshacer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+          <button data-eraser title="Borrar trazos: pasá por encima de lo dibujado" aria-label="Borrar trazos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20h11M5.5 14.5l8-8a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8L11 19H8z"/></svg></button>
+          <button data-done class="done" title="Salir del modo dibujo (Esc)">Listo</button>
+        </div>
+        <div class="draw-bar point-bar" id="point-bar" hidden>
+          <span class="point-hint">Arrastrá sobre la pizarra para señalar · cada arrastre es una zona</span>
+          <span class="sep"></span>
+          <button data-undo title="Deshacer la última zona (Ctrl+Z)" aria-label="Deshacer la última zona"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+          <button data-clear title="Cancelar: quita todas las zonas y sale (Esc)">Cancelar</button>
+          <button data-done class="done" title="Listo: guarda las zonas para tu pregunta (Enter)">Listo</button>
         </div>
         <div class="empty-hint" id="empty-hint"><div class="empty-card">
           <h2>Tu pizarra de álgebra</h2>
@@ -48,6 +68,7 @@
         </div></div>
       </section>
 
+      <div class="chat-resizer" id="chat-resizer" role="separator" aria-orientation="vertical" title="Arrastrá para cambiar el ancho · doble clic: ancho original"></div>
       <aside class="chat" id="chat">
         <div class="chat-head">
           <div class="chat-id">
@@ -67,8 +88,19 @@
         <div class="chips" id="chips"></div>
         <form class="composer" id="composer">
           <div class="focus-line" id="focus-line"></div>
-          <textarea id="ask-input" rows="2" placeholder="Preguntale algo sobre lo que hay en la pizarra…  ($x^2$ = matemática)"></textarea>
+          <div class="quote-bar" id="quote-bar" hidden></div>
+          <div class="quote-bar pointed" id="selection-bar" hidden></div>
+          <div class="attachments" id="attachments"></div>
+          <input type="file" id="attach-input" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden />
+          <div class="composer-tools">
+          <button type="button" class="attach point" id="point-btn" title="Señalar: adjunta lo que seleccionaste (texto del chat, una presentación o la Teoría; o lo seleccionado en la pizarra) a tu pregunta" aria-label="Señalar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg></button>
+          <button type="button" class="attach" id="attach-btn" title="Adjuntar imagen (también podés pegarla con Ctrl+V)" aria-label="Adjuntar imagen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.9-8.9a3.7 3.7 0 0 1 5.2 5.2l-8.9 8.9a1.8 1.8 0 0 1-2.6-2.6l8.2-8.2"/></svg></button>
+          </div>
+          <div class="composer-field">
+            <div class="ask-input" id="ask-input" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Pregunta" data-placeholder="Preguntale algo sobre lo que hay en la pizarra…  ($x^2$ = matemática · podés pegar imágenes)"></div>
+          </div>
           <button type="submit" title="Enviar (Enter)" aria-label="Enviar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+          <div class="math-preview" id="math-preview" hidden aria-live="polite"></div>
         </form>
       </aside>
     </main>
@@ -114,6 +146,9 @@
           <tr><td><kbd>Shift</kbd>+<kbd>Enter</kbd> / <kbd>Esc</kbd></td><td>terminar de editar</td></tr>
           <tr><td><kbd>Supr</kbd></td><td>borrar lo seleccionado</td></tr>
           <tr><td><kbd>N</kbd> <kbd>T</kbd> <kbd>G</kbd> <kbd>E</kbd> <kbd>H</kbd></td><td>ecuación · nota · graficar · ejercicio · inicio</td></tr>
+          <tr><td><kbd>D</kbd></td><td>dibujar a mano alzada (colores, grosor y goma en la barra) · <kbd>Esc</kbd> sale</td></tr>
+          <tr><td>mantener y arrastrar</td><td>mover cualquier ecuación, nota, dibujo, gráfica o tarjeta · un clic sin mover edita</td></tr>
+          <tr><td>pegar imagen (<kbd>Ctrl</kbd>+<kbd>V</kbd>)</td><td>en el chat: el asistente la ve cuando le preguntás</td></tr>
           <tr><td><kbd>F</kbd></td><td>teoría y fórmulas</td></tr>
           <tr><td><kbd>X</kbd></td><td>ejercicios del TP por secciones (clic = tarjeta en la pizarra)</td></tr>
           <tr><td>tarjeta de ejercicio</td><td>enunciado fijo · <b>+ Paso</b> o <kbd>Enter</kbd> agrega pasos · esquina = tamaño</td></tr>
