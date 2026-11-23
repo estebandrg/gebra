@@ -22,6 +22,7 @@ monitor  command: "bun bin/gebra.ts watch --model '<your model name>'"   timeout
 The web shows "Asistente · conectado" while `watch` runs, with the model you declared with `--model` (e.g.
 `--model "Claude Opus 5.5"`; or set `GEBRA_MODEL`) so the learner knows which AI is answering. Relaunch the monitor when it expires if the learner is still working.
 Each event line looks like `ASK q123 mode=tutor focus=m3,m4 :: ¿por qué paso restando?`.
+If the learner pasted images the line also has `images=/abs/path1.png,/abs/path2.png`: open each with your file-reading tool before answering. Pen drawings appear in `gebra board` as `dibujo a mano` items (position, size, color) — you cannot see their shape, so ask the learner to describe or paste a screenshot of it in the chat.
 
 ## 2. Answer a question
 

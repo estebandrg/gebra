@@ -71,7 +71,21 @@ export interface ToolItem {
   data: Record<string, unknown>;
 }
 
-export type Item = MathItem | TextItem | PlotItem | CardItem | ToolItem;
+/** Freehand stroke drawn with the pen. `pts` are relative to (x, y); w×h is its padded bounding box. */
+export interface DrawItem {
+  id: string;
+  kind: "draw";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: Chalk;
+  /** Stroke width in world px. */
+  size: number;
+  pts: [number, number][];
+}
+
+export type Item = MathItem | TextItem | PlotItem | CardItem | ToolItem | DrawItem;
 export type NewItem = Omit<MathItem, "id"> | Omit<TextItem, "id"> | Omit<PlotItem, "id">;
 
 export type ExerciseKind = "solve" | "factor" | "expand" | "divide" | "simplify";
@@ -107,6 +121,8 @@ export interface Ask {
   mode: AskMode;
   /** Item ids the user selected when asking. */
   focus: string[];
+  /** Pasted images: file names under `<data>/uploads/` (see `gebra watch`, which prints absolute paths). */
+  images?: string[];
 }
 
 export interface ChatMessage {
@@ -116,6 +132,8 @@ export interface ChatMessage {
   text: string;
   mode?: AskMode;
   presentationId?: string;
+  /** Image file names the learner attached (served at `/api/uploads/<name>`). */
+  images?: string[];
 }
 
 // ---------------------------------------------------------------- presentation DSL

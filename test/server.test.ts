@@ -106,6 +106,33 @@ describe("agent protocol", () => {
     const after = (await (await fetch(base + "/api/chat")).json()) as any[];
     expect(after.map((m) => m.text)).toEqual(["mensaje nuevo"]);
   });
+  test("a pasted image is stored, served back, and travels with the ask and the chat message", async () => {
+    const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="), (c) => c.charCodeAt(0));
+    const up = await fetch(base + "/api/upload", { method: "POST", headers: { "content-type": "image/png" }, body: png });
+    expect(up.status).toBe(200);
+    const { name, url } = (await up.json()) as { name: string; url: string };
+    expect(name).toMatch(/^img[a-z0-9]+\.png$/);
+    expect(existsSync(join(dir, "uploads", name))).toBe(true);
+    const got = await fetch(base + url);
+    expect(got.status).toBe(200);
+    expect(new Uint8Array(await got.arrayBuffer())).toEqual(png);
+
+    const ev = await nextEvent("/api/agent/stream", (d) => d.type === "ask", () => post("/api/ask", { text: "¿Qué dice acá?", mode: "chat", images: [name, "../../etc/passwd", "imgnoexiste.png"] }));
+    expect(ev.ask.images).toEqual([name]);
+    const chat = (await (await fetch(base + "/api/chat")).json()) as any[];
+    expect(chat.at(-1).images).toEqual([name]);
+  });
+
+  test("an image alone is a valid ask (default text); uploads reject non-images and path tricks", async () => {
+    const up = await fetch(base + "/api/upload", { method: "POST", headers: { "content-type": "image/gif" }, body: new Uint8Array([71, 73, 70, 56]) });
+    const { name } = (await up.json()) as { name: string };
+    const res = await post("/api/ask", { text: "", images: [name] });
+    expect(res.status).toBe(200);
+    expect((await fetch(base + "/api/upload", { method: "POST", headers: { "content-type": "text/html" }, body: "<script>" })).status).toBe(400);
+    expect((await fetch(base + "/api/upload", { method: "POST", headers: { "content-type": "image/png" }, body: new Uint8Array() })).status).toBe(400);
+    expect((await fetch(base + "/api/uploads/..%2Fboard.json")).status).toBe(404);
+  });
+
   test("ask rejects empty text", async () => {
     const res = await post("/api/ask", { text: "  " });
     expect(res.status).toBe(400);

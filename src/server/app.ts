@@ -1,7 +1,7 @@
 // Local server: persists the board, relays learner questions to the agent and pushes the
 // agent's presentations/messages to the web over Server-Sent Events.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { validatePresentation } from "../shared/dsl";
 import { generateExercise } from "../shared/exercises";
 import { parseMath, solveEquation } from "../shared/cas";
@@ -24,6 +24,11 @@ function inferTopic(kind: Exercise["kind"], latex: string): Topic {
   return Math.max(1, ...powers) >= 2 ? "cuadratica" : "lineal";
 }
 
+/** Image types the chat accepts, with the extension each is stored under. */
+const IMAGE_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const UPLOAD_NAME = /^img[a-z0-9]+\.(png|jpg|webp|gif)$/;
+
 const MODES: AskMode[] = ["explain", "tutor", "check", "exercise", "chat", "why"];
 
 export function emptyBoard(): Board {
@@ -35,6 +40,7 @@ const id = (prefix: string) => `${prefix}${Date.now().toString(36)}${Math.random
 export function startServer(opts: ServerOptions) {
   const dir = opts.dataDir;
   mkdirSync(join(dir, "presentations"), { recursive: true });
+  mkdirSync(join(dir, "uploads"), { recursive: true });
   const file = (name: string) => join(dir, name);
 
   const readBoard = (): Board => {
@@ -150,7 +156,31 @@ export function startServer(opts: ServerOptions) {
         },
       },
 
-      "/api/state": { GET: () => json({ agents: agentClients.size, model: currentModel() }) },
+      "/api/state": { GET: () => json({ agents: agentClients.size, model: currentModel(), dataDir: dir }) },
+
+      // Pasted chat images: raw bytes in, a file name out (stored under <data>/uploads/).
+      "/api/upload": {
+        POST: async (req) => {
+          const type = (req.headers.get("content-type") ?? "").split(";")[0]!.trim().toLowerCase();
+          const ext = IMAGE_TYPES[type];
+          if (!ext) return json({ error: "solo se aceptan imágenes png, jpeg, webp o gif" }, 400);
+          const bytes = new Uint8Array(await req.arrayBuffer());
+          if (!bytes.length) return json({ error: "imagen vacía" }, 400);
+          if (bytes.length > MAX_IMAGE_BYTES) return json({ error: "la imagen pesa más de 10 MB" }, 413);
+          const name = `${id("img")}.${ext}`;
+          writeFileSync(join(dir, "uploads", name), bytes);
+          return json({ ok: true, name, url: `/api/uploads/${name}` });
+        },
+      },
+
+      "/api/uploads/:name": {
+        GET: (req) => {
+          const name = basename(req.params.name);
+          const path = join(dir, "uploads", name);
+          if (!UPLOAD_NAME.test(name) || !existsSync(path)) return json({ error: "no existe" }, 404);
+          return new Response(Bun.file(path));
+        },
+      },
 
       "/api/chat": {
         GET: () => json(readChat()),
@@ -165,7 +195,8 @@ export function startServer(opts: ServerOptions) {
       "/api/ask": {
         POST: async (req) => {
           const body = (await req.json()) as Partial<Ask>;
-          const text = String(body.text ?? "").trim();
+          const images = Array.isArray(body.images) ? body.images.map(String).filter((n) => UPLOAD_NAME.test(n) && existsSync(join(dir, "uploads", n))) : [];
+          const text = String(body.text ?? "").trim() || (images.length ? "Mirá esta imagen" : "");
           if (!text) return json({ error: "text vacío" }, 400);
           const ask: Ask = {
             id: id("q"),
@@ -173,9 +204,10 @@ export function startServer(opts: ServerOptions) {
             text,
             mode: MODES.includes(body.mode as AskMode) ? (body.mode as AskMode) : "chat",
             focus: Array.isArray(body.focus) ? body.focus.map(String) : [],
+            ...(images.length ? { images } : {}),
           };
           appendFileSync(file("inbox.jsonl"), JSON.stringify(ask) + "\n");
-          addChat({ id: ask.id, at: ask.at, from: "me", text, mode: ask.mode });
+          addChat({ id: ask.id, at: ask.at, from: "me", text, mode: ask.mode, ...(images.length ? { images } : {}) });
           agentClients.forEach((c) => c.send({ type: "ask", ask }));
           return json({ ok: true, id: ask.id, agents: agentClients.size });
         },

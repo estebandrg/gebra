@@ -31,9 +31,12 @@ with `gebra present` / `gebra say`.
 | Resolvente | card button on quadratics: a, b, c → Δ (with the substitution shown) → how many roots → x₁, x₂, each box checked |
 | Gauss | card button on cubic or higher polynomials, or **Gauss** on a selected polynomial: candidates ±p/q as chips, one click computes P(r), a root opens Ruffini |
 | Theory | `F` or **Teoría**: searchable formulas (linear, quadratic, notable products, factoring, division); opens on the selected card's topic; **Insertar** puts a formula on the board |
-| Select / move / delete | click, `Shift`+click, drag the ⋮⋮ handle, `Supr`; `Ctrl+Z` undoes |
+| Select / move / delete | click, `Shift`+click, `Supr`; press and drag any equation, note, drawing, plot or card to move it (a click without moving edits); `Ctrl+Z` undoes |
+| Draw | `D` or **Dibujar**: freehand pen on the board; bar with colors, three thicknesses, an eraser (pass over a stroke to delete it) and **Listo** (`Esc`). Each stroke is its own item: click it to select, drag to move |
 | Pan / zoom | drag the background / wheel · `Ctrl`+wheel, `H` home |
 | Ask the Asistente | chat panel: Explicame (full presentation), Pista (hints only), ¿Está bien? (review), Charla |
+| Images in the chat | the 📎 button, paste (`Ctrl+V`) or drop an image on the message box; thumbnails show before sending. They are stored in `.gebra/uploads/` and `gebra watch` prints their absolute paths (`images=…`) so the agent can open them |
+| Resize the chat | drag the left edge of the Asistente sidebar (300–760 px, remembered); double-click the edge to reset |
 | New conversation | **Nueva** in the chat header (click twice to confirm): deletes the chat history and starts an empty conversation in every open tab. Questions stay archived in `.gebra/inbox.jsonl` and presentations in `.gebra/presentations/` |
 | Presentation | `space` pause · `←` `→` steps · `Esc` close · **Conservar** copies it to your board |
 

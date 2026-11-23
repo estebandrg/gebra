@@ -13,7 +13,8 @@ const BASE = process.env.GEBRA_URL ?? "http://localhost:5179";
 const HELP = `gebra — conexión del profe con la pizarra (${BASE})
 
   gebra board [--json]        Muestra la pizarra: ítems, posiciones, cadenas de pasos con verificación CAS y ejercicios
-  gebra watch [--model <m>]   Escucha preguntas de la web; imprime una línea por pregunta (para monitor).
+  gebra watch [--model <m>]   Escucha preguntas de la web; imprime una línea por pregunta (para monitor);
+                              si trae imágenes pegadas agrega images=<ruta,...> (abrilas con Read)
                               --model (o GEBRA_MODEL) muestra en la web qué modelo de IA responde
   gebra present <file|->      Envía una presentación en vivo (JSON del DSL; ver AGENTS.md)
   gebra say <texto...>        Manda un mensaje al chat de la web ($...$ = matemática)
@@ -22,7 +23,7 @@ const HELP = `gebra — conexión del profe con la pizarra (${BASE})
   gebra exercise --latex <ec> [--prompt <txt>] [--kind solve|factor|expand|simplify] [--answer a,b]
                               Pone un ejercicio propio (solve: la respuesta la calcula el CAS)
   gebra status [texto]        Muestra "el profe está…" en la web (sin texto lo borra)
-  gebra chat [n]              Últimos n mensajes del chat (por defecto 10)
+  gebra chat [n]              Últimos n mensajes del chat (por defecto 10); las imágenes pegadas salen como ruta de archivo
   gebra cas <op> <args...>    Álgebra simbólica (entrada y salida en LaTeX):
       solve <ec> [var]        check <paso1> <paso2>     factor <expr>     expand <expr>
       simplify <expr>         divide <dividendo> <divisor>                 roots <expr>
@@ -61,6 +62,7 @@ function describeItem(item: Item): string {
   if (item.kind === "text") return `[${item.id}] ${pos} texto: ${item.text}`;
   if (item.kind === "card") return `[${item.id}] ${pos} tarjeta del ejercicio ${item.exercise}`;
   if (item.kind === "tool") return `[${item.id}] ${pos} herramienta ${TOOL_LABEL[item.tool]}: ${toolSummary(item)}`;
+  if (item.kind === "draw") return `[${item.id}] ${pos} dibujo a mano ${item.w}x${item.h} (${item.color}, ${item.pts.length} puntos)`;
   return `[${item.id}] ${pos} gráfica ${item.w}x${item.h}: ${item.exprs.join(" ; ")}  x∈[${item.xRange.join(", ")}]`;
 }
 
@@ -137,7 +139,13 @@ export function renderBoard(board: Board): string {
 
 // ---------------------------------------------------------------- watch
 
+/** Absolute path of a pasted image (the server runs on this machine), so the agent can open it with its file tools. */
+let dataDir = process.env.GEBRA_DATA ?? new URL("../.gebra", import.meta.url).pathname;
+const uploadPath = (name: string) => `${dataDir}/uploads/${name}`;
+
 async function watch(model = process.env.GEBRA_MODEL ?? "") {
+  const state = await fetch(BASE + "/api/state").then((r) => r.json() as Promise<{ dataDir?: string }>).catch(() => null);
+  if (state?.dataDir) dataDir = state.dataDir;
   console.log(`[gebra] escuchando preguntas en ${BASE}${model ? ` como ${model}` : ""} …`);
   for (;;) {
     try {
@@ -159,7 +167,8 @@ async function watch(model = process.env.GEBRA_MODEL ?? "") {
           const ev = JSON.parse(line.slice(6)) as { type: string; ask: Ask };
           if (ev.type !== "ask") continue;
           const a = ev.ask;
-          console.log(`ASK ${a.id} mode=${a.mode} focus=${a.focus.join(",") || "-"} :: ${a.text.replace(/\s+/g, " ")}`);
+          const imgs = a.images?.length ? ` images=${a.images.map(uploadPath).join(",")}` : "";
+          console.log(`ASK ${a.id} mode=${a.mode} focus=${a.focus.join(",") || "-"}${imgs} :: ${a.text.replace(/\s+/g, " ")}`);
         }
       }
     } catch (e) {
@@ -274,8 +283,12 @@ async function main(argv: string[]) {
     case "chat": {
       const n = Number(rest[0] ?? 10);
       const msgs = await api<ChatMessage[]>("/api/chat");
+      const state = await api<{ dataDir?: string }>("/api/state");
+      if (state.dataDir) dataDir = state.dataDir;
       for (const m of msgs.slice(-n))
-        console.log(`${m.at.slice(11, 19)} ${m.from === "me" ? "VOS" : "PROFE"}${m.mode ? `[${m.mode}]` : ""}: ${m.text}`);
+        console.log(
+          `${m.at.slice(11, 19)} ${m.from === "me" ? "VOS" : "PROFE"}${m.mode ? `[${m.mode}]` : ""}: ${m.text}${m.images?.length ? `  (imágenes: ${m.images.map(uploadPath).join(", ")})` : ""}`,
+        );
       return;
     }
     case "cas":

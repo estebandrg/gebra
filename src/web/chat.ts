@@ -18,6 +18,9 @@ export class Chat {
   private agents = 0;
   private readonly list = document.getElementById("messages")!;
   private readonly input = document.getElementById("ask-input") as HTMLTextAreaElement;
+  private readonly attachmentsEl = document.getElementById("attachments")!;
+  /** Images pasted into the composer: uploaded file name (once the upload finishes) and its preview node. */
+  private attachments: { name?: string; node: HTMLElement }[] = [];
 
   constructor(
     private board: BoardView,
@@ -42,8 +45,101 @@ export class Chat {
       const id = (e.target as HTMLElement).closest<HTMLElement>("[data-replay]")?.dataset.replay;
       if (id) void this.player.replay(id);
     });
+    this.wireImages();
+    this.wireResize();
     board.onChange(() => this.refreshContext());
     this.wireNewConversation();
+  }
+
+  /** Paste (Ctrl+V) or drop images on the composer: each is uploaded and shown as a removable thumbnail. */
+  private wireImages() {
+    const composer = document.getElementById("composer")!;
+    const imagesOf = (data: DataTransfer | null) => [...(data?.files ?? [])].filter((f) => f.type.startsWith("image/"));
+    this.input.addEventListener("paste", (e) => {
+      const files = imagesOf(e.clipboardData);
+      if (!files.length) return;
+      e.preventDefault();
+      files.forEach((f) => void this.attach(f));
+    });
+    const picker = document.getElementById("attach-input") as HTMLInputElement;
+    document.getElementById("attach-btn")!.addEventListener("click", () => picker.click());
+    picker.addEventListener("change", () => {
+      imagesOf({ files: picker.files } as DataTransfer).forEach((f) => void this.attach(f));
+      picker.value = "";
+    });
+    composer.addEventListener("dragover", (e) => {
+      if (!imagesOf(e.dataTransfer).length && ![...(e.dataTransfer?.items ?? [])].some((i) => i.type.startsWith("image/"))) return;
+      e.preventDefault();
+      composer.classList.add("drop");
+    });
+    composer.addEventListener("dragleave", () => composer.classList.remove("drop"));
+    composer.addEventListener("drop", (e) => {
+      composer.classList.remove("drop");
+      const files = imagesOf(e.dataTransfer);
+      if (!files.length) return;
+      e.preventDefault();
+      files.forEach((f) => void this.attach(f));
+    });
+  }
+
+  /** Drag the left edge of the sidebar to change its width (kept between visits; double click resets it). */
+  private wireResize() {
+    const KEY = "gebra.chatWidth";
+    const DEFAULT = 380;
+    const root = document.documentElement;
+    const clamp = (w: number) => Math.round(Math.min(Math.max(300, w), Math.min(760, window.innerWidth * 0.65)));
+    const apply = (w: number) => root.style.setProperty("--chat-w", `${clamp(w)}px`);
+    const saved = Number(localStorage.getItem(KEY));
+    if (saved) apply(saved);
+    window.addEventListener("resize", () => apply(parseFloat(getComputedStyle(root).getPropertyValue("--chat-w")) || DEFAULT));
+    const handle = document.getElementById("chat-resizer")!;
+    handle.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      document.body.classList.add("resizing-chat");
+    });
+    handle.addEventListener("pointermove", (e) => {
+      if (handle.hasPointerCapture(e.pointerId)) apply(window.innerWidth - e.clientX);
+    });
+    const end = (e: PointerEvent) => {
+      if (!handle.hasPointerCapture(e.pointerId)) return;
+      handle.releasePointerCapture(e.pointerId);
+      document.body.classList.remove("resizing-chat");
+      localStorage.setItem(KEY, String(parseFloat(getComputedStyle(root).getPropertyValue("--chat-w")) || DEFAULT));
+    };
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+    handle.addEventListener("dblclick", () => {
+      apply(DEFAULT);
+      localStorage.removeItem(KEY);
+    });
+  }
+
+  private async attach(file: File) {
+    const node = el("div", "thumb loading", this.attachmentsEl);
+    const img = el("img", "", node);
+    img.src = URL.createObjectURL(file);
+    img.alt = "Imagen adjunta";
+    const att: { name?: string; node: HTMLElement } = { node };
+    this.attachments.push(att);
+    const remove = el("button", "", node);
+    remove.type = "button";
+    remove.textContent = "✕";
+    remove.title = "Quitar imagen";
+    remove.addEventListener("click", () => {
+      this.attachments = this.attachments.filter((a) => a !== att);
+      URL.revokeObjectURL(img.src);
+      node.remove();
+    });
+    const res = await fetch("/api/upload", { method: "POST", headers: { "content-type": file.type }, body: file }).catch(() => null);
+    const body = res?.ok ? ((await res.json()) as { name: string }) : null;
+    if (!body) {
+      toast("No pude subir la imagen (¿servidor apagado o más de 10 MB?)");
+      remove.click();
+      return;
+    }
+    att.name = body.name;
+    node.classList.remove("loading");
   }
 
   /** "Nueva": two clicks (the first asks to confirm) delete the conversation on the server and start an empty one. */
@@ -99,6 +195,19 @@ export class Chat {
   add(m: ChatMessage, scroll = true) {
     const d = el("div", `msg ${m.from}${m.presentationId ? " pres" : ""}`, this.list);
     if (m.from === "me" && m.mode) el("span", "mode", d).textContent = MODE_LABEL[m.mode];
+    if (m.images?.length) {
+      const imgs = el("div", "imgs", d);
+      for (const name of m.images) {
+        const a = el("a", "", imgs);
+        a.href = `/api/uploads/${name}`;
+        a.target = "_blank";
+        a.rel = "noopener";
+        const img = el("img", "", a);
+        img.src = a.href;
+        img.alt = "Imagen enviada";
+        img.loading = "lazy";
+      }
+    }
     const body = el("div", "", d);
     renderRich(body, m.presentationId ? `🎬 ${m.text}` : m.text);
     if (m.presentationId) {
@@ -171,14 +280,21 @@ export class Chat {
 
   async send(raw: string, mode = this.mode) {
     const text = raw.trim();
-    if (!text) return;
+    if (this.attachments.some((a) => !a.name)) return toast("Esperá a que termine de subirse la imagen");
+    const images = this.attachments.map((a) => a.name!);
+    if (!text && !images.length) return;
     this.input.value = "";
     const res = await fetch("/api/ask", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, mode, focus: this.board.focusIds() }),
+      body: JSON.stringify({ text, mode, focus: this.board.focusIds(), images }),
     }).catch(() => null);
-    if (!res?.ok) return toast("No pude enviar el mensaje (¿servidor apagado?)");
+    if (!res?.ok) {
+      this.input.value = raw;
+      return toast("No pude enviar el mensaje (¿servidor apagado?)");
+    }
+    this.attachments = [];
+    this.attachmentsEl.textContent = "";
     await this.board.saveNow();
     const { agents } = (await res.json()) as { agents: number };
     if (agents > 0) this.setTyping("el asistente está mirando la pizarra…");

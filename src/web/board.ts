@@ -5,7 +5,8 @@ import { compareSteps, parseMath, realRoots, type StepCheck } from "../shared/ca
 import { cardLines, cardProgress } from "../shared/cards";
 import { checkExerciseStep } from "../shared/exercises";
 import { TOOL_LABEL } from "../shared/tools";
-import type { Board, CardItem, Exercise, Item, MathItem, NewItem, PlotItem, TextItem, ToolItem, ToolKind, Topic } from "../shared/types";
+import type { Board, CardItem, DrawItem, Exercise, Item, MathItem, NewItem, PlotItem, TextItem, ToolItem, ToolKind, Topic } from "../shared/types";
+import { strokePath } from "../shared/draw";
 import { buildPlot } from "./plot";
 import { el, renderMath, renderRich, toast } from "./render";
 
@@ -70,6 +71,20 @@ export class BoardView {
   locked = false;
   readonly cardActions: CardAction[] = [];
   readonly toolRenderers = new Map<ToolKind, ToolRenderer>();
+
+  /** The "Tu pizarra de álgebra" hint goes away with the first click on the board and stays away. */
+  private hintDismissed = false;
+
+  constructor() {
+    this.viewport.addEventListener(
+      "pointerdown",
+      () => {
+        this.hintDismissed = true;
+        document.getElementById("empty-hint")!.hidden = true;
+      },
+      { capture: true },
+    );
+  }
 
   onChange(fn: Listener) {
     this.listeners.push(fn);
@@ -187,7 +202,8 @@ export class BoardView {
   applyView() {
     const v = this.board.view;
     this.world.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.zoom})`;
-    this.viewport.style.backgroundPosition = `${v.x}px ${v.y}px, ${v.x}px ${v.y}px, 0 0`;
+    // layers: ambient glow (fixed to the screen), dot grid (moves with the board), base color
+    this.viewport.style.backgroundPosition = `0 0, ${v.x}px ${v.y}px, 0 0`;
     this.viewport.style.backgroundSize = `auto, ${32 * v.zoom}px ${32 * v.zoom}px, auto`;
     document.getElementById("zoom-label")!.textContent = `${Math.round(v.zoom * 100)}%`;
   }
@@ -266,7 +282,7 @@ export class BoardView {
     // cards first so their lines have a body to live in
     for (const item of this.board.items) if (item.kind === "card") this.renderItem(item);
     for (const item of this.board.items) if (item.kind !== "card") this.renderItem(item);
-    document.getElementById("empty-hint")!.hidden = this.board.items.length > 0;
+    document.getElementById("empty-hint")!.hidden = this.hintDismissed || this.board.items.length > 0;
   }
 
   /** Card body for a card line, the free board otherwise. */
@@ -290,9 +306,6 @@ export class BoardView {
     if (!node) {
       node = el("div", `item ${item.kind}`);
       node.dataset.id = item.id;
-      const handle = el("div", "handle", node);
-      handle.textContent = "⋮⋮";
-      handle.title = "Arrastrar";
       const del = el("button", "del", node);
       del.textContent = "✕";
       del.title = "Borrar";
@@ -339,6 +352,15 @@ export class BoardView {
         node.insertBefore(head, content);
       }
       this.toolRenderers.get(item.tool)?.(item, content, this);
+    } else if (item.kind === "draw") {
+      node.className = `item draw c-${item.color}${this.board.selection.includes(item.id) ? " selected" : ""}`;
+      node.style.width = `${item.w}px`;
+      node.style.height = `${item.h}px`;
+      const sig = JSON.stringify([item.pts, item.size, item.w, item.h]);
+      if (content.dataset.sig !== sig) {
+        content.dataset.sig = sig;
+        content.innerHTML = `<svg width="${item.w}" height="${item.h}" viewBox="0 0 ${item.w} ${item.h}"><path class="hit" d="${strokePath(item.pts)}"/><path class="line" d="${strokePath(item.pts)}" stroke-width="${item.size}"/></svg>`;
+      }
     } else {
       const sig = JSON.stringify([item.exprs, item.xRange, item.yRange, item.marks, item.w, item.h]);
       if (content.dataset.sig !== sig) {
@@ -626,6 +648,16 @@ export class BoardView {
     return item;
   }
 
+  /** Add a finished pen stroke (already positioned in world space). */
+  addDraw(spec: Omit<DrawItem, "id" | "kind">): DrawItem {
+    this.checkpoint();
+    const item: DrawItem = { id: this.nextId("d"), kind: "draw", ...spec };
+    this.board.items.push(item);
+    this.board.selection = [];
+    this.changed();
+    return item;
+  }
+
   addPlot(spec: Omit<PlotItem, "id" | "kind">): PlotItem {
     this.checkpoint();
     const item: PlotItem = { id: this.nextId("g"), kind: "plot", ...spec };
@@ -736,7 +768,7 @@ export class BoardView {
     const node = this.elementFor(id);
     if (!item || !node || this.locked) return;
     if (this.editing?.id === id) return;
-    if (item.kind === "card" || item.kind === "plot") return;
+    if (item.kind === "card" || item.kind === "plot" || item.kind === "draw") return;
     this.commitEdit();
     const content = node.querySelector<HTMLElement>(".content")!;
     node.querySelectorAll(":scope > .badge, :scope > .why-btn").forEach((n) => n.remove());
@@ -857,7 +889,9 @@ export class BoardView {
     this.bound = true;
     const vp = this.viewport;
     let pan: { x: number; y: number; vx: number; vy: number; moved: boolean } | null = null;
-    let drag: { ids: string[]; start: { x: number; y: number }; orig: Map<string, { x: number; y: number }>; moved: boolean } | null = null;
+    // `edit`: a plain click (no movement) on a free math/text item starts editing it on release;
+    // holding and moving drags it instead, so the whole rectangle is the grab area.
+    let drag: { ids: string[]; start: { x: number; y: number }; screen: { x: number; y: number }; orig: Map<string, { x: number; y: number }>; moved: boolean; edit?: string } | null = null;
     let resize: { id: string; start: { x: number; y: number }; w: number; h: number; moved: boolean } | null = null;
 
     vp.addEventListener("pointerdown", (e) => {
@@ -867,7 +901,6 @@ export class BoardView {
       if (itemEl && e.button === 0) {
         const id = itemEl.dataset.id!;
         const item = this.get(id)!;
-        const onHandle = !!target.closest(".handle");
         if (target.closest(".resize") && item.kind === "card") {
           e.preventDefault();
           const r = this.worldRect(itemEl);
@@ -876,14 +909,15 @@ export class BoardView {
           return;
         }
         if (target.closest("math-field, textarea, input, select, button, .card-actions")) return;
-        if (item.kind === "tool" && item.card && !onHandle) return;
+        if (item.kind === "tool" && item.card) return;
         if (e.shiftKey) {
           e.preventDefault();
           const sel = this.board.selection.includes(id) ? this.board.selection.filter((s) => s !== id) : [...this.board.selection, id];
           this.commitEdit();
           return this.select(sel);
         }
-        if (onHandle || item.kind === "plot" || item.kind === "card" || item.kind === "tool") {
+        const inCard = item.kind === "math" && !!item.card;
+        if (!inCard) {
           e.preventDefault();
           if (!this.board.selection.includes(id)) this.select([id]);
           const ids = this.board.selection.filter((i) => {
@@ -891,7 +925,8 @@ export class BoardView {
             return !((it?.kind === "math" || it?.kind === "tool") && it.card);
           });
           const orig = new Map(ids.map((i) => [i, { x: this.get(i)!.x, y: this.get(i)!.y }]));
-          drag = { ids, start: this.toWorld(e.clientX, e.clientY), orig, moved: false };
+          const editable = (item.kind === "math" || item.kind === "text") && !this.locked;
+          drag = { ids, start: this.toWorld(e.clientX, e.clientY), screen: { x: e.clientX, y: e.clientY }, orig, moved: false, ...(editable ? { edit: id } : {}) };
           vp.setPointerCapture(e.pointerId);
           return;
         }
@@ -924,7 +959,7 @@ export class BoardView {
         const p = this.toWorld(e.clientX, e.clientY);
         const dx = p.x - drag.start.x;
         const dy = p.y - drag.start.y;
-        if (!drag.moved && Math.hypot(dx, dy) > 3) {
+        if (!drag.moved && Math.hypot(e.clientX - drag.screen.x, e.clientY - drag.screen.y) > 4) {
           drag.moved = true;
           this.checkpoint();
         }
@@ -957,8 +992,10 @@ export class BoardView {
         resize = null;
       }
       if (drag) {
-        if (drag.moved) this.changed();
+        const { moved, edit } = drag;
         drag = null;
+        if (moved) this.changed();
+        else if (edit) this.startEdit(edit);
       }
       if (pan) {
         vp.classList.remove("panning");

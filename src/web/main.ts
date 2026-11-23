@@ -4,12 +4,14 @@ import type { Board, ServerEvent, Topic } from "../shared/types";
 import { makeExercise } from "../shared/exercises";
 import { BoardView } from "./board";
 import { Chat } from "./chat";
+import { DrawTool } from "./draw";
 import { Player } from "./player";
 import { el, toast } from "./render";
 
 const board = new BoardView();
 registerTools(board);
 const player = new Player(board);
+const draw = new DrawTool(board);
 const chat = new Chat(board, player);
 board.askWhy = (id, how) => {
   board.select([id]);
@@ -75,6 +77,8 @@ function tool(name: string) {
       const p = board.freeSpot();
       return board.addText(Math.round(p.x), Math.round(p.y));
     }
+    case "draw":
+      return draw.toggle();
     case "plot":
       return board.plotSelection();
     case "exercise":
@@ -125,8 +129,13 @@ document.addEventListener("keydown", (e) => {
   if (mod && e.key.toLowerCase() === "y") return (e.preventDefault(), board.undo(true));
   if (mod) return;
   const key = e.key.toLowerCase();
+  if (draw.active) {
+    if (e.key === "Escape" || key === "d") (e.preventDefault(), draw.toggle(false));
+    return;
+  }
   if (key === "n") (e.preventDefault(), tool("math"));
   else if (key === "t") (e.preventDefault(), tool("text"));
+  else if (key === "d") (e.preventDefault(), tool("draw"));
   else if (key === "g") tool("plot");
   else if (key === "e") tool("exercise");
   else if (key === "h") tool("home");
