@@ -46,8 +46,37 @@ function splitLetters(latex: string): string {
     .replace(/(?<![\\a-zA-Z_])([a-zA-Z])(?=\d)/g, "$1\\cdot ");
 }
 
+/** `a/\frac{b}{c}` must divide by the whole fraction: wrap a `\frac` that directly follows `/` in parentheses. */
+function wrapDivisorFractions(latex: string): string {
+  // index just after the {...} group starting at `at`, or -1
+  const group = (s: string, at: number): number => {
+    if (s[at] !== "{") return -1;
+    let depth = 0;
+    for (let i = at; i < s.length; i++) {
+      if (s[i] === "{") depth++;
+      else if (s[i] === "}" && --depth === 0) return i + 1;
+    }
+    return -1;
+  };
+  let out = "";
+  let i = 0;
+  while (i < latex.length) {
+    const m = latex[i] === "/" ? /^\/\s*\\frac\s*/.exec(latex.slice(i)) : null;
+    const start = m ? i + m[0].length : -1;
+    const mid = m ? group(latex, start) : -1;
+    const end = mid < 0 ? -1 : group(latex, mid);
+    if (end < 0) {
+      out += latex[i++];
+      continue;
+    }
+    out += `/(\\frac${wrapDivisorFractions(latex.slice(start, end))})`;
+    i = end;
+  }
+  return out;
+}
+
 function latexToNerd(latex: string): string {
-  const src = splitLetters(latex.trim());
+  const src = wrapDivisorFractions(splitLetters(latex.trim()));
   if (!src) throw new Error("vacío");
   const converted = String(nd.convertFromLaTeX(src));
   if (/\b(times|div|cdot|frac|left|right)\b/.test(converted)) throw new Error(`no entendí: ${src}`);

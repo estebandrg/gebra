@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  parseMath, compareSteps, solveEquation, factor, expand, divide, realRoots, compile, toTeX, checkAnswer,
+  parseMath, compareSteps, solveEquation, factor, expand, divide, realRoots, compile, toTeX, checkAnswer, simplify,
 } from "../src/shared/cas";
 
 describe("parseMath", () => {
@@ -125,5 +125,18 @@ describe("a number right after a letter is a product", () => {
     expect(compareSteps("x^2", "x\\cdot x").status).toBe("equivalent");
     expect(compareSteps("0.5x", "x/2").status).toBe("equivalent");
     expect(compareSteps("2x^{10}", "2\\cdot x^{10}").status).toBe("equivalent");
+  });
+});
+
+describe("division by a fraction", () => {
+  test("a \\div \\frac{b}{c} divides by the whole fraction", () => {
+    expect(simplify("2x\\div\\frac{x}{4}")).toBe("8");
+    expect(simplify("\\frac{y}{2x}\\div\\frac{-1}{6x}")).toBe("-3y");
+    expect(simplify("\\left(-\\frac{10}{3x}\\right)\\div\\frac{2}{x}")).toBe("-\\frac{5}{3}");
+    expect(simplify("a/\\frac{\\frac{1}{2}}{3}")).toBe("6a");
+  });
+  test("plain division and parenthesised divisors are unchanged", () => {
+    expect(simplify("12\\div4\\div3")).toBe("1");
+    expect(simplify("\\frac{2}{3}\\div\\left(-\\frac{5}{4}\\right)")).toBe("-\\frac{8}{15}");
   });
 });

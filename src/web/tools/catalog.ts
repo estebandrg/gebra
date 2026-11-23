@@ -1,4 +1,4 @@
-// Exercises modal: the worksheets (TP 2, TP 3) split into sections; any exercise goes onto the board as a card.
+// Exercises modal: the worksheets (TP 1, TP 2, TP 3) split into sections; any exercise goes onto the board as a card.
 import "./catalog.css";
 import {
   WORKSHEETS,

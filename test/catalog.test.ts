@@ -67,7 +67,7 @@ describe("catalog search and board marks", () => {
   test("empty query returns everything, an id returns that item", () => {
     expect(searchCatalog("").length).toBe(catalogItems().length);
     expect(searchCatalog("5a", "tp2").map((i) => i.id)).toEqual(["5a"]);
-    expect(searchCatalog("5a").map(itemKey)).toEqual(["tp2:5a", "tp3:5a"]);
+    expect(searchCatalog("5a").map(itemKey)).toEqual(["tp1:5a", "tp2:5a", "tp3:5a"]);
   });
   test("matches group titles and statement text ignoring LaTeX noise", () => {
     expect(searchCatalog("diferencia de cuadrados").every((i) => i.id.startsWith("6"))).toBe(true);
@@ -140,5 +140,38 @@ describe("TP3 catalog", () => {
     const tp3a = findCatalogItem("5a", "tp3")!;
     expect(onBoard([catalogExercise(findCatalogItem("5a", "tp2")!)], tp3a)).toBe(false);
     expect(onBoard([catalogExercise(tp3a)], tp3a)).toBe(true);
+  });
+});
+
+describe("TP1 catalog", () => {
+  const tp1 = () => catalogItems("tp1");
+  const numberOf = (i: { id: string }) => Number(i.id.match(/^\d+/)![0]);
+  test("loads only the computational exercises, in four sections", () => {
+    expect(worksheet("tp1").sections.map((s) => s.id)).toEqual(["enteros", "racionales", "expresiones", "porcentajes"]);
+    expect([...new Set(tp1().map(numberOf))]).toEqual([4, 5, 11, 12, 13, 14, 15, 16]);
+    const count = (n: number) => tp1().filter((i) => numberOf(i) === n).length;
+    expect([4, 5, 11, 12, 13, 14, 15, 16].map(count)).toEqual([9, 3, 11, 7, 8, 4, 3, 6]);
+  });
+  test("every TP1 item parses and its answer is accepted by the card", () => {
+    for (const item of tp1()) {
+      expect(parseMath(item.latex).kind).not.toBe("invalid");
+      const ex = catalogExercise(item);
+      expect(ex.id.startsWith(`tp1-${item.id}-`)).toBe(true);
+      if (item.kind === "solve") {
+        const v = (parseMath(item.latex) as { vars: string[] }).vars[0] ?? "x";
+        expect(checkExerciseStep(ex, `${v}=${ex.answer[0]}`).status).toBe("solved");
+      } else {
+        expect(checkExerciseStep(ex, ex.answer[0]!).status).toBe("solved");
+        expect(checkExerciseStep(ex, item.latex).status).toBe("progress");
+      }
+    }
+  });
+  test("answers match the worksheet numbers", () => {
+    const ans = (id: string) => findCatalogItem(id, "tp1")!.answer![0];
+    expect(catalogExercise(findCatalogItem("5c", "tp1")!).answer).toEqual(["-1"]);
+    expect(catalogExercise(findCatalogItem("16b1", "tp1")!).answer).toEqual(["35"]);
+    expect(catalogExercise(findCatalogItem("16c2", "tp1")!).answer).toEqual(["180"]);
+    expect(ans("13a")).toBe("8");
+    expect(ans("11k")).toBe("\\frac{27}{4}");
   });
 });

@@ -4,7 +4,7 @@ import { solveEquation } from "./cas";
 import { polyTeX } from "./exercises";
 import type { Exercise, ExerciseKind, Topic } from "./types";
 
-export type WorksheetId = "tp2" | "tp3";
+export type WorksheetId = "tp1" | "tp2" | "tp3";
 
 export interface CatalogItem {
   /** Worksheet this exercise belongs to. */
@@ -203,6 +203,112 @@ const TP2_SECTIONS: CatalogSection[] = [
   },
 ];
 
+// ---------------------------------------------------------------- TP 1: Números reales
+
+// Only the computational exercises are loaded (4, 5, 11–16). Classification, number line, properties, "show with an example",
+// comparing fractions and the word problems (17–24) have no expression to simplify or equation to start from.
+const TP1_SECTIONS: CatalogSection[] = [
+  {
+    id: "enteros",
+    title: "Enteros y ecuaciones",
+    hint: "Prioridad de operaciones y ecuaciones lineales",
+    groups: [
+      group("tp1", 4, "Operaciones con enteros", "simplify", "operaciones", "Resolvé respetando las prioridades de las operaciones", [
+        ["a", "2+5-(-3)", "10"],
+        ["b", "5-3-4\\div(-2)", "4"],
+        ["c", "2-(-6)-9\\div(-3)", "11"],
+        ["d", "-7-3\\cdot4-12\\cdot2\\div3", "-27"],
+        ["e", "6-(2-3)+4\\div(-1)", "3"],
+        ["f", "12\\div(2-6)-9\\cdot(-4)\\div6", "3"],
+        ["g", "-8\\cdot(-7)\\div(-2)-(-3)", "-25"],
+        ["h", "3+6\\cdot(-4)\\div(-2-1)", "11"],
+        ["i", "(3\\cdot5-6)-(5-4\\cdot3)", "16"],
+      ]),
+      group("tp1", 5, "Ecuaciones", "solve", "lineal", "Resolvé indicando la propiedad que aplicás en cada paso", [
+        ["a", "2\\cdot x+3=11"],
+        ["b", "4x-3=8-2x+1"],
+        ["c", "19-2(4-x)=(2x-1)\\cdot(-3)"],
+      ]),
+    ],
+  },
+  {
+    id: "racionales",
+    title: "Racionales",
+    hint: "Operaciones con fracciones y decimales",
+    groups: [
+      group("tp1", 11, "Operaciones con racionales", "simplify", "operaciones", "Resolvé y dejá una fracción irreducible", [
+        ["a", "\\frac{5}{6}-\\frac{3}{4}", "\\frac{1}{12}"],
+        ["b", "1-\\frac{1}{4}+\\frac{2}{3}", "\\frac{17}{12}"],
+        ["c", "\\frac{2}{3}\\div\\left(-\\frac{5}{4}\\right)", "-\\frac{8}{15}"],
+        ["d", "\\frac{2}{3}\\cdot\\frac{6}{5}\\cdot\\left(-\\frac{15}{4}\\right)", "-3"],
+        ["e", "\\frac{2}{\\frac{2}{3}}-\\frac{\\frac{2}{3}}{2}", "\\frac{8}{3}"],
+        ["f", "\\frac{\\frac{1}{12}}{\\frac{1}{8}-\\frac{1}{9}}", "6"],
+        ["g", "\\frac{2-\\frac{3}{4}}{\\frac{1}{2}-\\frac{1}{3}}", "\\frac{15}{2}"],
+        ["h", "\\frac{\\frac{2}{5}+\\frac{1}{2}}{\\frac{1}{10}+\\frac{3}{15}}", "3"],
+        // 1,3̂ = 4/3 · 3,75 = 15/4
+        ["i", "\\frac{1}{2}-\\frac{4}{3}+\\frac{15}{4}-\\frac{7}{4}", "\\frac{7}{6}", "(1,3̂ = 4/3 y 3,75 = 15/4)"],
+        ["j", "2.4-\\frac{3}{10}-(-6.1)-\\frac{2}{-5}", "\\frac{43}{5}"],
+        // 1,6̂ = 5/3
+        ["k", "\\frac{2}{3}-\\frac{3}{4}\\div\\left(\\frac{-1}{7}\\right)-\\frac{\\frac{5}{3}}{-2}", "\\frac{27}{4}", "(1,6̂ = 5/3)"],
+      ]),
+    ],
+  },
+  {
+    id: "expresiones",
+    title: "Expresiones",
+    hint: "Reducir y operar con letras",
+    groups: [
+      group("tp1", 12, "Reducir expresiones", "simplify", "operaciones", "Reducí la expresión", [
+        ["a", "7-\\frac{x-8}{2}", "\\frac{22-x}{2}"],
+        ["b", "\\frac{\\frac{x}{2}}{4}-\\frac{5}{\\frac{10}{x}}", "-\\frac{3x}{8}"],
+        ["c", "\\frac{\\frac{7}{x}}{3}-\\frac{2}{\\frac{x}{2}}", "-\\frac{5}{3x}"],
+        ["d", "\\frac{x}{-3}-\\frac{4-x}{2}", "\\frac{x-12}{6}"],
+        ["e", "\\frac{5}{3x}-\\frac{1-x}{2x}", "\\frac{3x+7}{6x}"],
+        ["f", "\\frac{3}{\\frac{x}{2}}-\\frac{\\frac{14}{x}}{2}+\\frac{\\frac{1}{3}}{2x}", "-\\frac{5}{6x}"],
+        ["g", "\\frac{2+\\frac{1}{x}}{1-\\frac{1}{3x}}", "\\frac{3(2x+1)}{3x-1}"],
+      ]),
+      group("tp1", 13, "Operar y reducir", "simplify", "operaciones", "Operá y reducí la expresión lo más posible", [
+        ["a", "2x\\div\\left(\\frac{x}{4}\\right)", "8"],
+        ["b", "\\frac{2z}{3}\\div(8z)", "\\frac{1}{12}"],
+        ["c", "\\frac{y}{2x}\\div\\left(\\frac{-1}{6x}\\right)", "-3y"],
+        ["d", "\\left(-\\frac{10}{3x}\\right)\\div\\left(\\frac{2}{x}\\right)", "-\\frac{5}{3}"],
+        ["e", "x\\cdot\\left(\\frac{4}{3x}-\\frac{3}{2x}\\right)", "-\\frac{1}{6}"],
+        ["f", "\\left(\\frac{-8}{9x}\\div\\frac{1}{3xz}\\right)\\cdot\\frac{2}{z}", "-\\frac{16}{3}"],
+        ["g", "\\frac{x}{2y}+\\frac{x}{6}\\div(-2y)", "\\frac{5x}{12y}"],
+        ["h", "\\left(\\frac{2x}{5}-\\frac{x}{10}\\right)\\div(-x)", "-\\frac{3}{10}"],
+      ]),
+    ],
+  },
+  {
+    id: "porcentajes",
+    title: "Porcentajes",
+    hint: "Partes, incrementos y reducciones",
+    groups: [
+      group("tp1", 14, "Fracción y porcentaje", "simplify", "operaciones", "¿Qué % de la cantidad es? Calculá la fracción por 100", [
+        ["a", "\\frac{1}{2}\\cdot100", "50", "(la mitad)"],
+        ["b", "\\frac{1}{4}\\cdot100", "25", "(la cuarta parte)"],
+        ["c", "\\frac{1}{5}\\cdot100", "20", "(la quinta parte)"],
+        ["d", "\\frac{1}{10}\\cdot100", "10", "(la décima parte)"],
+      ]),
+      group("tp1", 15, "Calcular porcentajes", "simplify", "operaciones", "Calculá", [
+        ["a", "0.3\\cdot200", "60", "(el 30% de 200)"],
+        ["b", "200+0.3\\cdot200", "260", "(incrementar 200 en un 30%)"],
+        ["c", "200-0.3\\cdot200", "140", "(reducir 200 en un 30%)"],
+      ]),
+      group("tp1", 16, "Completar con porcentajes", "simplify", "operaciones", "Calculá", [
+        ["a1", "0.3\\cdot70", "21", "(el 30% de 70)"],
+        ["a2", "0.7\\cdot30", "21", "(el 70% de 30)"],
+        ["c1", "0.45\\cdot140", "63", "(el 45% de 140)"],
+      ]),
+      group("tp1", 16, "Hallar el porcentaje o el total", "solve", "lineal", "Planteá la ecuación y resolvé", [
+        ["b1", "\\frac{x}{100}\\cdot120=42", undefined, "(42 es el x% de 120)"],
+        ["b2", "0.75x=42", "56", "(42 es el 75% de x)"],
+        ["c2", "0.45x=81", "180", "(el 45% de x es 81)"],
+      ]),
+    ],
+  },
+];
+
 // ---------------------------------------------------------------- TP 3: Polinomios
 
 /** Synthetic division by (x - a): quotient coefficients and remainder. */
@@ -373,6 +479,7 @@ const TP3_SECTIONS: CatalogSection[] = [
 ];
 
 export const WORKSHEETS: Worksheet[] = [
+  { id: "tp1", tab: "TP 1", title: "TP 1 · Números reales", sections: TP1_SECTIONS },
   { id: "tp2", tab: "TP 2", title: "TP 2 · Ecuaciones y Factorización", sections: TP2_SECTIONS },
   { id: "tp3", tab: "TP 3", title: "TP 3 · Polinomios", sections: TP3_SECTIONS },
 ];
