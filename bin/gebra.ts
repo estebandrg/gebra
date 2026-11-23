@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 // gebra: the agent's side of the whiteboard. Reads the board, watches learner questions,
 // sends live presentations and chat messages, and exposes the CAS.
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import * as cas from "../src/shared/cas";
 import { cardLines, cardProgress } from "../src/shared/cards";
 import { checkExerciseStep, exerciseAnswerTeX } from "../src/shared/exercises";
 import { TOOL_LABEL, toolSummary } from "../src/shared/tools";
-import type { Ask, Board, CardItem, ChatMessage, Item } from "../src/shared/types";
+import type { Ask, Board, CardItem, ChatMessage, Item, Pointed, Quote } from "../src/shared/types";
 
 const BASE = process.env.GEBRA_URL ?? "http://localhost:5179";
 
@@ -14,7 +14,9 @@ const HELP = `gebra — conexión del profe con la pizarra (${BASE})
 
   gebra board [--json]        Muestra la pizarra: ítems, posiciones, cadenas de pasos con verificación CAS y ejercicios
   gebra watch [--model <m>]   Escucha preguntas de la web; imprime una línea por pregunta (para monitor);
-                              si trae imágenes pegadas agrega images=<ruta,...> (abrilas con Read)
+                              si trae imágenes pegadas agrega images=<ruta,...> (abrilas con Read);
+                              si responde a un mensaje del chat agrega quote=VOS|PROFE:"<texto citado>";
+                              si señaló algo (texto seleccionado o zonas arrastradas sobre la pizarra) agrega selection=[{"text":"…","ids":[…]}] ($...$ = fórmula)
                               --model (o GEBRA_MODEL) muestra en la web qué modelo de IA responde
   gebra present <file|->      Envía una presentación en vivo (JSON del DSL; ver AGENTS.md)
   gebra say <texto...>        Manda un mensaje al chat de la web ($...$ = matemática)
@@ -22,6 +24,8 @@ const HELP = `gebra — conexión del profe con la pizarra (${BASE})
         temas: lineal | cuadratica | factorizar | operaciones | division · nivel 1-3
   gebra exercise --latex <ec> [--prompt <txt>] [--kind solve|factor|expand|simplify] [--answer a,b]
                               Pone un ejercicio propio (solve: la respuesta la calcula el CAS)
+  gebra skill [nombre]        Sin nombre lista las skills (skills/<nombre>/SKILL.md); con nombre imprime sus instrucciones
+                              (leelas y seguilas) y deja un aviso "Skill cargada" en el chat de la web
   gebra status [texto]        Muestra "el profe está…" en la web (sin texto lo borra)
   gebra chat [n]              Últimos n mensajes del chat (por defecto 10); las imágenes pegadas salen como ruta de archivo
   gebra cas <op> <args...>    Álgebra simbólica (entrada y salida en LaTeX):
@@ -143,6 +147,18 @@ export function renderBoard(board: Board): string {
 let dataDir = process.env.GEBRA_DATA ?? new URL("../.gebra", import.meta.url).pathname;
 const uploadPath = (name: string) => `${dataDir}/uploads/${name}`;
 
+/** ` quote=PROFE:"…"` when the learner replied to a chat message (single line, so the monitor event stays one line). */
+export function quoteTag(q?: Quote): string {
+  return q ? ` quote=${q.from === "me" ? "VOS" : "PROFE"}:${JSON.stringify(q.text.replace(/\s+/g, " "))}` : "";
+}
+
+/** ` selection=[{"text":"…","ids":["m1"],"equation":"…","parts":["…"],"marked":"…","detail":"…"}]` when the learner pointed at things (selected text or board zones) before asking. */
+export function pointedTag(list?: Pointed[]): string {
+  if (!list?.length) return "";
+  // `detail` is the report the web computed for a zone; its lines are joined with ¶ so the event stays on one line
+  return ` selection=${JSON.stringify(list.map((p) => ({ text: p.text.replace(/\s+/g, " "), ...(p.ids?.length ? { ids: p.ids } : {}), ...(p.equation && p.parts?.length ? { equation: p.equation, parts: p.parts, ...(p.marked ? { marked: p.marked } : {}) } : {}), ...(p.detail ? { detail: p.detail.replace(/\s*\n\s*/g, " ¶ ") } : {}) })))}`;
+}
+
 async function watch(model = process.env.GEBRA_MODEL ?? "") {
   const state = await fetch(BASE + "/api/state").then((r) => r.json() as Promise<{ dataDir?: string }>).catch(() => null);
   if (state?.dataDir) dataDir = state.dataDir;
@@ -168,7 +184,7 @@ async function watch(model = process.env.GEBRA_MODEL ?? "") {
           if (ev.type !== "ask") continue;
           const a = ev.ask;
           const imgs = a.images?.length ? ` images=${a.images.map(uploadPath).join(",")}` : "";
-          console.log(`ASK ${a.id} mode=${a.mode} focus=${a.focus.join(",") || "-"}${imgs} :: ${a.text.replace(/\s+/g, " ")}`);
+          console.log(`ASK ${a.id} mode=${a.mode} focus=${a.focus.join(",") || "-"}${imgs}${quoteTag(a.quote)}${pointedTag(a.pointed)} :: ${a.text.replace(/\s+/g, " ")}`);
         }
       }
     } catch (e) {
@@ -176,6 +192,41 @@ async function watch(model = process.env.GEBRA_MODEL ?? "") {
     }
     await Bun.sleep(3000);
   }
+}
+
+// ---------------------------------------------------------------- skills
+
+const SKILLS_DIR = process.env.GEBRA_SKILLS ?? new URL("../skills", import.meta.url).pathname;
+const SKILL_NAME = /^[a-z0-9][a-z0-9-]{0,39}$/;
+
+export interface Skill {
+  name: string;
+  title: string;
+  description: string;
+  body: string;
+}
+
+/** Parse `skills/<name>/SKILL.md`: a small `key: value` frontmatter followed by the instructions. */
+export function parseSkill(name: string, raw: string): Skill {
+  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  const meta: Record<string, string> = {};
+  for (const line of (m?.[1] ?? "").split(/\r?\n/)) {
+    const kv = line.match(/^(\w+):\s*(.*)$/);
+    if (kv) meta[kv[1]!] = kv[2]!.trim();
+  }
+  return { name, title: meta.title || name, description: meta.description ?? "", body: (m ? m[2]! : raw).trim() };
+}
+
+export function listSkills(dir = SKILLS_DIR): Skill[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && SKILL_NAME.test(d.name) && existsSync(`${dir}/${d.name}/SKILL.md`))
+    .map((d) => parseSkill(d.name, readFileSync(`${dir}/${d.name}/SKILL.md`, "utf8")));
+}
+
+export function readSkill(name: string, dir = SKILLS_DIR): Skill | null {
+  if (!SKILL_NAME.test(name) || !existsSync(`${dir}/${name}/SKILL.md`)) return null;
+  return parseSkill(name, readFileSync(`${dir}/${name}/SKILL.md`, "utf8"));
 }
 
 // ---------------------------------------------------------------- cas
@@ -276,6 +327,18 @@ async function main(argv: string[]) {
       const r = await postJson("/api/exercise", body);
       return console.log(`ejercicio ${r.exercise.id}: ${r.exercise.prompt}: ${r.exercise.latex}  (respuesta: ${r.exercise.answer.join(", ")}) → ${r.viewers} pestaña(s)`);
     }
+    case "skill": {
+      const name = rest[0];
+      if (!name) {
+        const all = listSkills();
+        return console.log(all.length ? all.map((k) => `${k.name} — ${k.description}`).join("\n") : "(no hay skills en skills/)");
+      }
+      const skill = readSkill(name);
+      if (!skill) fail(`skill desconocida: ${name}. Disponibles: ${listSkills().map((k) => k.name).join(", ") || "(ninguna)"}`);
+      await postJson("/api/skill", { name: skill.name, title: skill.title });
+      console.log(`# Skill: ${skill.title}\n\n${skill.body}`);
+      return;
+    }
     case "status": {
       await postJson("/api/status", { text: rest.join(" ") });
       return console.log(rest.length ? "estado mostrado" : "estado borrado");
@@ -287,7 +350,7 @@ async function main(argv: string[]) {
       if (state.dataDir) dataDir = state.dataDir;
       for (const m of msgs.slice(-n))
         console.log(
-          `${m.at.slice(11, 19)} ${m.from === "me" ? "VOS" : "PROFE"}${m.mode ? `[${m.mode}]` : ""}: ${m.text}${m.images?.length ? `  (imágenes: ${m.images.map(uploadPath).join(", ")})` : ""}`,
+          `${m.at.slice(11, 19)} ${m.from === "me" ? "VOS" : "PROFE"}${m.mode ? `[${m.mode}]` : ""}${quoteTag(m.quote)}${pointedTag(m.pointed)}: ${m.text}${m.images?.length ? `  (imágenes: ${m.images.map(uploadPath).join(", ")})` : ""}`,
         );
       return;
     }

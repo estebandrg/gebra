@@ -201,6 +201,7 @@ body.resizing-chat iframe, body.resizing-chat .viewport { pointer-events: none; 
 .msg.profe { align-self: flex-start; background: var(--base); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
 .msg strong { color: var(--rosewater); }
 .msg .mode { display: block; font-size: 10.5px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--mauve); margin-bottom: 3px; opacity: .85; }
+.msg.system.skill { color: var(--mauve); border: 1px solid #c6a0f644; background: #c6a0f614; font-weight: 600; }
 .msg.pres { border-color: #c6a0f655; background: linear-gradient(180deg, #c6a0f60f, transparent 70%), var(--base); }
 .msg.pres button { margin-top: 8px; font-size: 12px; background: #c6a0f61a; color: var(--mauve); border: 1px solid #c6a0f644; padding: 4px 10px; }
 .msg.pres button:hover { background: #c6a0f633; }
@@ -344,6 +345,50 @@ body.drawing.erasing .viewport, body.drawing.erasing .viewport * { cursor: cell 
 .draw-bar .done:hover { background: var(--lavender); }
 
 /* ------------------------------------------------------------ chat images */
+.msg { position: relative; }
+.msg .reply-btn { position: absolute; top: 4px; right: 6px; width: 22px; height: 22px; padding: 0; border-radius: 50%; font-size: 13px; line-height: 20px; background: var(--surface0); color: var(--subtext1); opacity: 0; transition: opacity .15s; }
+.msg:hover .reply-btn, .msg .reply-btn:focus-visible { opacity: 1; }
+.msg .reply-btn:hover { background: var(--surface1); color: var(--text); }
+.msg .quoted { margin: 0 0 6px; padding: 4px 8px; border-left: 3px solid var(--mauve); background: #0003; border-radius: 4px 8px 8px 4px; font-size: 12px; color: var(--subtext0); max-height: 4.5em; overflow: hidden; white-space: normal; }
+.quote-from { display: block; font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--mauve); }
+.quote-bar { grid-column: 1 / -1; position: relative; padding: 4px 28px 4px 8px; border-left: 3px solid var(--mauve); background: var(--base); border-radius: 4px 10px 10px 4px; font-size: 12px; color: var(--subtext0); max-height: 4.8em; overflow: hidden; }
+.quote-bar[hidden] { display: none; }
+.quote-bar .quote-x { position: absolute; top: 3px; right: 4px; width: 18px; height: 18px; padding: 0; border-radius: 50%; font-size: 10px; line-height: 16px; background: transparent; color: var(--overlay1); }
+.quote-bar .quote-x:hover { background: var(--red); color: var(--crust); }
+.quote-bar.pointed, .msg .quoted.pointed { border-left-color: var(--yellow); }
+.quote-bar.pointed { max-height: 9.5em; overflow-y: auto; padding-right: 8px; }
+.pointed-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pointed-head button { height: auto; width: auto; padding: 1px 8px; font-size: 11px; border-radius: 999px; background: var(--surface0); color: var(--subtext1); }
+.pointed-head button:hover { background: var(--red); color: var(--crust); }
+.pointed-row { display: flex; align-items: flex-start; gap: 6px; margin-top: 3px; }
+.pointed-row .pointed-n { flex: none; min-width: 16px; height: 16px; border-radius: 50%; background: var(--yellow); color: var(--crust); font-size: 10px; line-height: 16px; text-align: center; margin-top: 2px; }
+.pointed-row .quote-text { flex: 1; min-width: 0; max-height: 2.9em; overflow: hidden; }
+.pointed-row .pointed-x { flex: none; width: 18px; height: 18px; padding: 0; border-radius: 50%; font-size: 10px; line-height: 16px; background: transparent; color: var(--overlay1); }
+.pointed-row .pointed-x:hover { background: var(--red); color: var(--crust); }
+.msg .quoted.pointed .quote-text { display: block; margin-top: 2px; }
+body.pointing .viewport, body.pointing .viewport * { cursor: crosshair !important; }
+.point-hint { font-size: 12px; color: var(--subtext1); padding: 0 6px; }
+.frag-on > :first-child { background: color-mix(in srgb, var(--yellow) 30%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow) 55%, transparent); border-radius: 4px; }
+.point-rubber { position: absolute; z-index: 6; pointer-events: none; border: 1.5px dashed var(--yellow); background: color-mix(in srgb, var(--yellow) 12%, transparent); border-radius: 6px; }
+.point-mark { position: absolute; z-index: 4; pointer-events: none; border: 2px dashed var(--yellow); border-radius: 10px; background: color-mix(in srgb, var(--yellow) 9%, transparent); box-shadow: 0 0 0 1px #0004; }
+.point-mark b { position: absolute; left: -10px; top: -10px; min-width: 20px; height: 20px; border-radius: 50%; background: var(--yellow); color: var(--crust); font-size: 12px; line-height: 20px; text-align: center; }
+.quote-bar.pointed .quote-from, .msg .quoted.pointed .quote-from { color: var(--yellow); }
+.ask-selection { position: fixed; z-index: 60; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--mauve); color: var(--crust); box-shadow: 0 4px 14px #0007; animation: msg-in .15s var(--ease); }
+.ask-selection:hover { background: var(--lavender); }
+.composer-tools { display: flex; gap: 6px; align-self: end; }
+.composer .attach.point.on { background: var(--mauve); color: var(--crust); }
+.composer-field { grid-column: 2; display: grid; min-width: 0; }
+.ask-input { background: var(--base); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; font: inherit; line-height: 1.5; min-height: 60px; max-height: 150px; overflow-y: auto; box-sizing: border-box; white-space: pre-wrap; word-wrap: break-word; cursor: text; transition: border-color .15s, box-shadow .15s; }
+.ask-input:focus { outline: none; border-color: #c6a0f688; box-shadow: 0 0 0 3px #c6a0f61f; }
+.ask-input:empty::before { content: attr(data-placeholder); color: var(--overlay0); pointer-events: none; }
+.ask-input .m-raw { font-family: var(--mono, ui-monospace, monospace); font-size: .93em; color: var(--yellow); background: #eed49f14; border-radius: 4px; padding: 0 2px; }
+.ask-input .m-rendered { display: inline-block; vertical-align: middle; padding: 0 6px; margin: 0 1px; border-radius: 6px; background: color-mix(in srgb, var(--yellow) 20%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--yellow) 45%, transparent); cursor: pointer; user-select: all; }
+.ask-input .m-rendered .katex { font-size: 1.05em; color: var(--yellow); }
+.math-preview { grid-column: 1 / -1; padding: 6px 12px; background: var(--crust); border: 1px dashed #c6a0f655; border-radius: 10px; overflow-x: auto; text-align: center; }
+.math-preview .katex-display { margin: 0; }
+.math-preview .katex { color: var(--yellow); }
+.tex-copy [data-latex] { cursor: copy; border-radius: 4px; transition: background .15s; }
+.tex-copy [data-latex]:hover { background: #c6a0f622; }
 .attachments { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
 .attachments:empty { display: none; }
 .attachments .thumb { position: relative; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--base); }

@@ -221,3 +221,76 @@ describe("exercises from the agent", () => {
     expect((await post("/api/exercise", { topic: "trigonometria" })).status).toBe(400);
   });
 });
+
+describe("skills", () => {
+  test("loading a skill leaves a persisted notice in the chat and tells the web", async () => {
+    const ev = await nextEvent("/api/events", (d) => d.type === "chat" && !!d.message.skill, () => post("/api/skill", { name: "didactica", title: "Didáctica" }));
+    expect(ev.message.skill).toEqual({ name: "didactica", title: "Didáctica" });
+    expect(ev.message.text).toBe("Skill cargada: Didáctica");
+    const chat = (await (await fetch(base + "/api/chat")).json()) as any[];
+    expect(chat.at(-1).skill.name).toBe("didactica");
+  });
+
+  test("rejects invalid skill names", async () => {
+    expect((await post("/api/skill", { name: "../etc/passwd" })).status).toBe(400);
+    expect((await post("/api/skill", {})).status).toBe(400);
+  });
+});
+
+describe("quoting a message", () => {
+  test("the quote travels with the ask and stays in the chat history", async () => {
+    const quote = { from: "profe", text: "Restá $3$ de los dos lados" };
+    const ev = await nextEvent("/api/agent/stream", (d) => d.type === "ask", () => post("/api/ask", { text: "¿Por qué restamos?", mode: "chat", quote }));
+    expect(ev.ask.quote).toEqual(quote);
+    const chat = (await (await fetch(base + "/api/chat")).json()) as any[];
+    expect(chat.at(-1).quote).toEqual(quote);
+  });
+
+  test("a malformed quote is dropped, the question still goes through", async () => {
+    const ev = await nextEvent("/api/agent/stream", (d) => d.type === "ask", () => post("/api/ask", { text: "hola", quote: { from: "otro", text: "x" } }));
+    expect(ev.ask.quote).toBeUndefined();
+  });
+});
+
+describe("pointing at things", () => {
+  test("a pointed zone keeps the report the web computed for it (detail), trimmed and capped", async () => {
+    const detail = "  Zona: 1 elemento\n1. [m1] (pizarra) ecuación: $2x=4$ ✓  ";
+    const ev = await nextEvent("/api/agent/stream", (d) => d.type === "ask", () => post("/api/ask", { text: "¿esto?", pointed: [{ text: "$2x=4$", ids: ["m1"], detail }, { text: "sin detalle" }, { text: "enorme", detail: "x".repeat(5000) }] }));
+    expect(ev.ask.pointed[0].detail).toBe("Zona: 1 elemento\n1. [m1] (pizarra) ecuación: $2x=4$ ✓");
+    expect(ev.ask.pointed[1].detail).toBeUndefined();
+    expect(ev.ask.pointed[2].detail).toHaveLength(3000);
+  });
+
+  test("a marked fragment keeps the complete equation, the marked parts and the marked version; stray parts are dropped", async () => {
+    const pointed = [
+      { text: "$x+4$ en $5-x$", ids: ["m3"], equation: "5-\\frac{x+4}{0.5}=2x^2-3", parts: ["x+4", "  ", 7, "0.5"], marked: "5-\\frac{«x+4»}{0.5}=2x^2-3" },
+      { text: "sin ecuación", parts: ["x"], marked: "«x»" },
+      { text: "sin partes", equation: "2x=4", parts: [] },
+    ];
+    const ev = await nextEvent("/api/agent/stream", (d) => d.type === "ask", () => post("/api/ask", { text: "¿esto?", pointed }));
+    expect(ev.ask.pointed[0].equation).toBe("5-\\frac{x+4}{0.5}=2x^2-3");
+    expect(ev.ask.pointed[0].parts).toEqual(["x+4", "0.5"]);
+    expect(ev.ask.pointed[0].marked).toBe("5-\\frac{«x+4»}{0.5}=2x^2-3");
+    for (const i of [1, 2]) {
+      expect(ev.ask.pointed[i].equation).toBeUndefined();
+      expect(ev.ask.pointed[i].parts).toBeUndefined();
+      expect(ev.ask.pointed[i].marked).toBeUndefined();
+    }
+  });
+
+  test("the pointed entries travel with the ask and stay in the chat history", async () => {
+    const pointed = [{ text: "  dividimos por $2$\n  ambos lados ", ids: ["m1", "../x", "t2"] }, { text: "zona vacía" }, { text: "   " }];
+    const ev = await nextEvent("/api/agent/stream", (d) => d.type === "ask", () => post("/api/ask", { text: "¿Por qué dividimos?", mode: "chat", pointed }));
+    expect(ev.ask.pointed).toEqual([{ text: "dividimos por $2$ ambos lados", ids: ["m1", "t2"] }, { text: "zona vacía" }]);
+    const chat = (await (await fetch(base + "/api/chat")).json()) as any[];
+    expect(chat.at(-1).pointed).toEqual(ev.ask.pointed);
+  });
+
+  test("at most 8 entries, and anything that is not a list of texts is dropped", async () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ text: `z${i}` }));
+    const ev = await nextEvent("/api/agent/stream", (d) => d.type === "ask", () => post("/api/ask", { text: "hola", pointed: many }));
+    expect(ev.ask.pointed).toHaveLength(8);
+    const ev2 = await nextEvent("/api/agent/stream", (d) => d.type === "ask", () => post("/api/ask", { text: "hola", pointed: { x: 1 } }));
+    expect(ev2.ask.pointed).toBeUndefined();
+  });
+});

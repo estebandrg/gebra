@@ -123,6 +123,30 @@ export interface Ask {
   focus: string[];
   /** Pasted images: file names under `<data>/uploads/` (see `gebra watch`, which prints absolute paths). */
   images?: string[];
+  /** Message the learner is replying to (quoted from the chat). */
+  quote?: Quote;
+  /** What the learner pointed at before asking (selected text, or zones dragged over the board). */
+  pointed?: Pointed[];
+}
+
+/** One thing the learner pointed at: its text (`$…$` = formula) and, for a zone of the board, the item ids inside it. */
+export interface Pointed {
+  text: string;
+  ids?: string[];
+  /** Zone only: what the web computed inside it (exact LaTeX, CAS verdicts, the assistant's presentation, hand-drawing geometry). */
+  detail?: string;
+  /** Fragment of an equation: the complete LaTeX of the line the learner marked part of… */
+  equation?: string;
+  /** …the marked parts (balanced LaTeX slices of `equation`)… */
+  parts?: string[];
+  /** …and the equation with « » around each part, so the exact position is unambiguous. */
+  marked?: string;
+}
+
+/** A chat message quoted in a reply. */
+export interface Quote {
+  from: "me" | "profe";
+  text: string;
 }
 
 export interface ChatMessage {
@@ -132,8 +156,14 @@ export interface ChatMessage {
   text: string;
   mode?: AskMode;
   presentationId?: string;
+  /** Set when the agent loaded a skill (`gebra skill <name>`): the chat shows a notice instead of a bubble. */
+  skill?: { name: string; title: string };
   /** Image file names the learner attached (served at `/api/uploads/<name>`). */
   images?: string[];
+  /** Message this one replies to. */
+  quote?: Quote;
+  /** What the learner pointed at when asking. */
+  pointed?: Pointed[];
 }
 
 // ---------------------------------------------------------------- presentation DSL

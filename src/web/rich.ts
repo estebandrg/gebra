@@ -2,7 +2,8 @@
 export type RichToken = { kind: "text" | "math"; value: string; bold: boolean };
 
 export function richTokens(text: string): RichToken[] {
-  const parts = text.split(/(\$[^$]+\$)/g);
+  // `$$x$$` (pasted display math) reads as `$x$`.
+  const parts = text.replace(/\$\$([^$]+)\$\$/g, "$$$1$").split(/(\$[^$]+\$)/g);
   const isMath = (p: string) => p.length > 2 && p.startsWith("$") && p.endsWith("$");
   // Only paired markers toggle bold; a trailing unmatched `**` stays literal.
   const markers = parts.reduce((n, p) => (isMath(p) ? n : n + (p.split("**").length - 1)), 0);

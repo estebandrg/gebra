@@ -4,11 +4,13 @@ import { MathfieldElement } from "mathlive";
 import { compareSteps, parseMath, realRoots, type StepCheck } from "../shared/cas";
 import { cardLines, cardProgress } from "../shared/cards";
 import { checkExerciseStep } from "../shared/exercises";
-import { TOOL_LABEL } from "../shared/tools";
+import { TOOL_LABEL, toolSummary } from "../shared/tools";
+import type { SceneElement } from "../shared/zone";
 import type { Board, CardItem, DrawItem, Exercise, Item, MathItem, NewItem, PlotItem, TextItem, ToolItem, ToolKind, Topic } from "../shared/types";
 import { strokePath } from "../shared/draw";
 import { buildPlot } from "./plot";
-import { el, renderMath, renderRich, toast } from "./render";
+import { isWrappedMath, unwrapMath, wrapMath } from "../shared/latex";
+import { copyText, el, renderMath, renderRich, toast } from "./render";
 
 MathfieldElement.fontsDirectory = "/vendor/mathlive/fonts";
 MathfieldElement.soundsDirectory = null;
@@ -105,13 +107,13 @@ export class BoardView {
   }
 
   private snapshot() {
-    return JSON.stringify({ items: this.board.items, exercises: this.board.exercises });
+    return JSON.stringify({ items: this.board.items, exercises: this.board.exercises, selection: this.board.selection });
   }
 
   /** Call before a user-visible mutation so it can be undone. */
   checkpoint() {
     this.undoStack.push(this.snapshot());
-    if (this.undoStack.length > 100) this.undoStack.shift();
+    if (this.undoStack.length > 200) this.undoStack.shift();
     this.redoStack = [];
   }
 
@@ -124,7 +126,7 @@ export class BoardView {
     const s = JSON.parse(snap);
     this.board.items = s.items;
     this.board.exercises = s.exercises;
-    this.board.selection = this.board.selection.filter((id) => this.get(id));
+    this.board.selection = ((s.selection ?? this.board.selection) as string[]).filter((id) => this.get(id));
     this.changed();
   }
 
@@ -597,7 +599,10 @@ export class BoardView {
   // ------------------------------------------------------------ mutations
 
   select(ids: string[], add = false) {
-    this.board.selection = add ? [...new Set([...this.board.selection, ...ids])] : ids;
+    const next = add ? [...new Set([...this.board.selection, ...ids])] : ids;
+    // a real selection change is an undo step of its own (Ctrl+Z goes back to the previous selection)
+    if (next.length !== this.board.selection.length || next.some((id, i) => id !== this.board.selection[i])) this.checkpoint();
+    this.board.selection = next;
     this.renderAll();
     this.scheduleSave();
     this.emit();
@@ -638,6 +643,28 @@ export class BoardView {
     return item;
   }
 
+  /** LaTeX of the selected equations (one per line), or null when none is selected. */
+  selectedLatex(): string | null {
+    const lines = this.board.selection.map((id) => this.get(id)).flatMap((i) => (i?.kind === "math" && i.latex.trim() ? [i.latex] : []));
+    return lines.length ? lines.join("\n") : null;
+  }
+
+  /** Ctrl+C on the board: the selected equations' LaTeX goes to the clipboard. Returns false if there was nothing to copy. */
+  copySelection(): boolean {
+    const latex = this.selectedLatex();
+    if (latex) void copyText(latex.split("\n").map(wrapMath).join("\n"), this.board.selection.length > 1 ? "LaTeX copiado entre $…$ (una ecuación por línea)" : undefined);
+    return latex !== null;
+  }
+
+  /** Ctrl+V on the board: pasted text (with or without `$`/`$$`) becomes a new equation in the middle of the view. */
+  pasteMath(text: string) {
+    if (this.locked) return;
+    const latex = unwrapMath(text).replace(/\s*\n\s*/g, " ");
+    if (!latex) return;
+    const c = this.viewCenter();
+    this.addMath(Math.round(c.x), Math.round(c.y), latex, {}, false);
+  }
+
   addText(x: number, y: number, text = "", extra: Partial<TextItem> = {}, edit = true): TextItem {
     this.checkpoint();
     const item: TextItem = { id: this.nextId("t"), kind: "text", x, y, text, ...extra };
@@ -675,6 +702,58 @@ export class BoardView {
       this.board.items.push({ ...it, id: this.nextId(prefix) } as Item);
     }
     this.changed();
+  }
+
+  /** World rect of every rendered item, with its id (what a dragged "Señalar" zone can hit). */
+  itemRects(): { id: string; rect: { x: number; y: number; w: number; h: number } }[] {
+    return [...this.elements].map(([id, n]) => ({ id, rect: this.worldRect(n) }));
+  }
+
+  /** Re-render one item from its data (drops any temporary view, such as the fragment-marking one). */
+  refreshItem(id: string) {
+    const it = this.get(id);
+    if (it) this.renderItem(it);
+  }
+
+  /** The rendered content of a board item (what "Señalar" re-renders to mark fragments of an equation). */
+  contentOf(id: string): HTMLElement | undefined {
+    return this.elements.get(id)?.querySelector<HTMLElement>(".content") ?? undefined;
+  }
+
+  /** CAS verdict of a math line against the previous step (or the statement, inside a card). */
+  private verdictOf(item: MathItem): string | undefined {
+    if (!item.latex.trim()) return;
+    let r: StepCheck | null | undefined;
+    if (item.card) {
+      const card = this.get(item.card);
+      if (card?.kind !== "card") return;
+      r = cardProgress(this.board, card, checkStep).lines.find((l) => l.id === item.id)?.check;
+    } else {
+      const chain = this.chainOf(item);
+      const i = chain.findIndex((c) => c.id === item.id);
+      if (i > 0) r = checkStep(chain[i - 1]!.latex, item.latex);
+    }
+    if (!r) return;
+    return r.status === "equivalent" ? "✓ equivalente al paso anterior" : r.status === "different" ? `✗ ${r.reason}` : `? ${r.reason}`;
+  }
+
+  /** Every board item as plain facts (exact LaTeX, CAS verdict, color, stroke geometry) for "Señalar". */
+  scene(): SceneElement[] {
+    const out: SceneElement[] = [];
+    for (const item of this.board.items) {
+      const node = this.elements.get(item.id);
+      const rect = node ? this.worldRect(node) : { x: item.x, y: item.y, w: 0, h: 0 };
+      const base = { id: item.id, source: "pizarra" as const, rect };
+      if (item.kind === "math") out.push({ ...base, kind: "math", latex: item.latex, verdict: this.verdictOf(item) });
+      else if (item.kind === "text") out.push({ ...base, kind: "text", text: item.text, color: item.color });
+      else if (item.kind === "plot") out.push({ ...base, kind: "plot", exprs: item.exprs, detail: `x de ${item.xRange[0]} a ${item.xRange[1]}` });
+      else if (item.kind === "draw") out.push({ ...base, kind: "draw", color: item.color, stroke: { pts: item.pts.map(([x, y]) => [item.x + x, item.y + y] as [number, number]), size: item.size } });
+      else if (item.kind === "card") {
+        const ex = this.board.exercises.find((e) => e.id === item.exercise);
+        out.push({ ...base, kind: "card", detail: ex ? `${ex.prompt}: $${ex.latex}$` : undefined });
+      } else out.push({ ...base, kind: "tool", detail: `${TOOL_LABEL[item.tool]}: ${toolSummary(item)}` });
+    }
+    return out;
   }
 
   /** World rects of every rendered board item (badges excluded). */
@@ -793,6 +872,18 @@ export class BoardView {
         /* older MathLive: menu stays */
       }
       this.editing = { id, field: mf };
+      // A formula pasted between $…$ / $$…$$ (or \(…\)) goes in as LaTeX without the delimiters.
+      mf.addEventListener(
+        "paste",
+        (e) => {
+          const text = e.clipboardData?.getData("text/plain") ?? "";
+          if (!isWrappedMath(text)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          mf.insert(unwrapMath(text), { format: "latex" });
+        },
+        { capture: true },
+      );
       mf.addEventListener(
         "keydown",
         (e) => {
@@ -848,7 +939,7 @@ export class BoardView {
       this.board.items = this.board.items.filter((i) => i.id !== item.id);
       this.board.selection = this.board.selection.filter((i) => i !== item.id);
     } else if (value !== old) {
-      this.undoStack.push(JSON.stringify({ items: this.board.items.map((i) => (i.id === item.id ? { ...i } : i)), exercises: this.board.exercises }));
+      this.undoStack.push(JSON.stringify({ items: this.board.items.map((i) => (i.id === item.id ? { ...i } : i)), exercises: this.board.exercises, selection: this.board.selection }));
       if (item.kind === "math") item.latex = value;
       if (item.kind === "text") item.text = value;
     }

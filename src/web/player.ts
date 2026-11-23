@@ -1,6 +1,7 @@
 // Live presentation player: executes the agent's step scripts on top of the board with chalk-like
 // animations, captions, camera moves, and pause/next/prev controls.
 import type { Action, Chalk, NewItem, Placement, Presentation } from "../shared/types";
+import type { Scene, SceneNote } from "../shared/zone";
 import type { BoardView } from "./board";
 import { buildPlot, type BuiltPlot } from "./plot";
 import { el, renderMath, renderRich, toast } from "./render";
@@ -30,6 +31,8 @@ export class Player {
   private running = new Set<Animation>();
   private entries = new Map<string, PresEntry>();
   private lastWritten: string | null = null;
+  /** Highlights, arrows and strikes drawn so far (what "Señalar" reports back to the agent). */
+  private notes: SceneNote[] = [];
   private wake: (() => void) | null = null;
   private waitTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -87,6 +90,41 @@ export class Player {
 
   prev() {
     this.goTo(Math.max(0, this.step - 1));
+  }
+
+  /** Stop at the current moment (pointing at something must not let it move on). */
+  pause() {
+    if (this.pres && !this.paused) this.toggle();
+  }
+
+  /** A line the assistant wrote, as something whose rendering can be swapped temporarily (fragment marking). */
+  mathHost(id: string): { content: HTMLElement; latex: string; restore: () => void } | null {
+    const e = this.entries.get(id);
+    if (!e || e.action.type !== "write" || e.node.style.opacity === "0" || e.node.style.visibility === "hidden") return null;
+    const content = e.node.querySelector<HTMLElement>(".content");
+    if (!content) return null;
+    const full = e.latex ?? e.action.latex;
+    return { content, latex: full.replace(/\\htmlId\{[^}]*\}\{([^{}]*)\}/g, "$1"), restore: () => renderMath(content, full) };
+  }
+
+  /** What the presentation has on the board right now, as plain facts: written lines, notes drawn over them, the step's caption. */
+  snapshot(): Scene | null {
+    const pres = this.pres;
+    if (!pres) return null;
+    const hidden = new Set<string>();
+    const elements: Scene["elements"] = [];
+    for (const [id, { node, action, latex }] of this.entries) {
+      if (node.style.opacity === "0") hidden.add(id);
+      if (node.style.opacity === "0" || node.style.visibility === "hidden") continue;
+      const base = { id, source: "presentación" as const, rect: this.board.worldRect(node) };
+      if (action.type === "write") elements.push({ ...base, kind: "math", color: action.color ?? "yellow", latex: (latex ?? action.latex).replace(/\\htmlId\{[^}]*\}\{([^{}]*)\}/g, "$1") });
+      else if (action.type === "text") elements.push({ ...base, kind: "text", color: action.color ?? "blue", text: action.text });
+      else if (action.type === "plot") elements.push({ ...base, kind: "plot", exprs: action.exprs, detail: `x de ${action.xRange[0]} a ${action.xRange[1]}` });
+    }
+    const baseId = (t?: string) => t?.split("#")[0] ?? "";
+    const notes = this.notes.filter((n) => ![n.target, n.from, n.to].some((t) => hidden.has(baseId(t))));
+    const say = pres.steps[Math.max(0, this.step)]?.say ?? "";
+    return { elements, notes, presentation: { title: pres.title, step: Math.max(0, this.step) + 1, total: pres.steps.length, caption: say } };
   }
 
   toggle() {
@@ -147,6 +185,7 @@ export class Player {
     this.layer.textContent = "";
     this.ink.querySelectorAll(":scope > :not(defs)").forEach((n) => n.remove());
     this.entries.clear();
+    this.notes = [];
     this.lastWritten = null;
     this.running.clear();
     this.board.restoreTemp();
@@ -387,6 +426,7 @@ export class Player {
         const r = { x: r0.x - pad, y: r0.y - pad, w: r0.w + pad * 2, h: r0.h + pad * 2 };
         const c = color(a.color, "yellow");
         const style = a.style ?? "box";
+        this.notes.push({ type: "highlight", target: a.target, style, color: a.color ?? "yellow", label: a.label });
         if (style === "fill") {
           const p = this.path(`M${r.x},${r.y}h${r.w}v${r.h}h${-r.w}Z`, "none", 0, c);
           p.style.opacity = "0";
@@ -442,6 +482,7 @@ export class Player {
         const ny = vertical ? 0 : (e.x - s.x) / (dist || 1);
         const cpt = { x: (s.x + e.x) / 2 + nx * dist * bend, y: (s.y + e.y) / 2 + ny * dist * bend };
         const c = color(a.color, "white");
+        this.notes.push({ type: "arrow", from: a.from, to: a.to, color: a.color ?? "white", label: a.label });
         await this.draw(this.path(`M${s.x},${s.y}Q${cpt.x},${cpt.y} ${e.x},${e.y}`, c, 2.6), 650);
         const ang = Math.atan2(e.y - cpt.y, e.x - cpt.x);
         const head = (k: number) => `L${e.x - 14 * Math.cos(ang + k)},${e.y - 14 * Math.sin(ang + k)}`;
@@ -459,6 +500,7 @@ export class Player {
         if (!r) return;
         await this.show(r);
         const c = color(a.color, "red");
+        this.notes.push({ type: "strike", target: a.target, color: a.color ?? "red" });
         await this.draw(this.path(`M${r.x - 3},${r.y + r.h * 0.78}L${r.x + r.w + 3},${r.y + r.h * 0.22}`, c, 3), 320);
         return;
       }
@@ -514,6 +556,7 @@ export class Player {
         this.layer.textContent = "";
         this.ink.querySelectorAll(":scope > :not(defs)").forEach((n) => n.remove());
         this.entries.clear();
+        this.notes = [];
         this.lastWritten = null;
         this.board.restoreTemp();
         return;

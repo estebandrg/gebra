@@ -6,6 +6,15 @@ import type { BoardView } from "./board";
 const SIZES = [2, 4, 8];
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+/**
+ * The pen cancels the pointer's default action, so a text box that had focus (the chat, an equation) would keep it
+ * and swallow Ctrl+Z as its own undo. Drop that focus so the shortcut reaches the board.
+ */
+function blurTextField() {
+  const a = document.activeElement as HTMLElement | null;
+  if (a?.closest("math-field, textarea, input, select, [contenteditable=true]")) a.blur();
+}
+
 export class DrawTool {
   active = false;
   private color: Chalk = "yellow";
@@ -34,6 +43,7 @@ export class DrawTool {
     if (on) {
       this.board.commitEdit();
       this.board.select([]);
+      blurTextField();
     } else this.cancel();
   }
 
@@ -49,6 +59,7 @@ export class DrawTool {
       colors.appendChild(b);
     }
     this.bar.querySelectorAll<HTMLElement>("[data-size]").forEach((b) => b.addEventListener("click", () => this.setSize(Number(b.dataset.size))));
+    this.bar.querySelector("[data-undo]")!.addEventListener("click", () => this.board.undo());
     this.bar.querySelector("[data-eraser]")!.addEventListener("click", () => this.setEraser(!this.eraser));
     this.bar.querySelector("[data-done]")!.addEventListener("click", () => this.toggle(false));
     this.setColor(this.color);
@@ -78,6 +89,7 @@ export class DrawTool {
     e.preventDefault();
     e.stopImmediatePropagation();
     this.board.commitEdit();
+    blurTextField();
     this.board.viewport.setPointerCapture(e.pointerId);
     const p = this.board.toWorld(e.clientX, e.clientY);
     const path = document.createElementNS(SVG_NS, "path");
